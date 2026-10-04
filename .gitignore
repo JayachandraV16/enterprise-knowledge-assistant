@@ -1,0 +1,38 @@
+# Node / Frontend
+**/node_modules/
+**/dist/
+**/build/
+**/.vite/
+**/.cache/
+**/.figma/attachments/
+*.tsbuildinfo
+*.log
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Java / Spring Boot
+**/target/
+**/*.class
+**/*.jar
+**/*.war
+**/.mvn/wrapper/maven-wrapper.jar
+
+# Python / FastAPI AI Service
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+**/env/
+**/.pytest_cache/
+**/chroma_db/
+**/vector_db/
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.DS_Store
+Thumbs.db

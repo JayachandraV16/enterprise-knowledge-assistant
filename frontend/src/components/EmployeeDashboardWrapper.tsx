@@ -1,7 +1,7 @@
 import EmployeeDashboard from "@/imports/04EmployeeDashboard/index";
 
 interface Props {
-  navigate: (page: string) => void;
+  navigate?: (page: string) => void;
   userName?: string;
 }
 
@@ -35,7 +35,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
       >
         {/* New Conversation button */}
         <button
-          onClick={() => navigate("employeeChat")}
+          onClick={() => navigate?.("employeeChat")}
           aria-label="New Conversation"
           style={{
             pointerEvents: "all",
@@ -51,7 +51,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         />
         {/* Chat nav */}
         <button
-          onClick={() => navigate("employeeChat")}
+          onClick={() => navigate?.("employeeChat")}
           aria-label="Chat"
           style={{
             pointerEvents: "all",
@@ -67,7 +67,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         />
         {/* History nav */}
         <button
-          onClick={() => navigate("history")}
+          onClick={() => navigate?.("history")}
           aria-label="History"
           style={{
             pointerEvents: "all",
@@ -83,7 +83,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         />
         {/* Settings nav */}
         <button
-          onClick={() => navigate("settings")}
+          onClick={() => navigate?.("settings")}
           aria-label="Settings"
           style={{
             pointerEvents: "all",
@@ -107,7 +107,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         {/* Quick action cards row — three cards side by side */}
         {/* "New Chat" card */}
         <button
-          onClick={() => navigate("employeeChat")}
+          onClick={() => navigate?.("employeeChat")}
           aria-label="New Chat"
           style={{
             pointerEvents: "all",
@@ -123,7 +123,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         />
         {/* "View History" card */}
         <button
-          onClick={() => navigate("history")}
+          onClick={() => navigate?.("history")}
           aria-label="View History"
           style={{
             pointerEvents: "all",
@@ -158,7 +158,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         {[0, 1, 2].map((i) => (
           <button
             key={i}
-            onClick={() => navigate("employeeChat")}
+            onClick={() => navigate?.("employeeChat")}
             aria-label="Resume conversation"
             style={{
               pointerEvents: "all",

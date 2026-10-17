@@ -3,7 +3,7 @@ import svgPaths from "@/imports/04EmployeeDashboard/svg-0eglxyxvnv";
 import imgFrame from "@/imports/04EmployeeDashboard/b8581a3a8f9a19b6eec05845c18e07081f487330.png";
 
 interface Props {
-  navigate: (page: string) => void;
+  navigate?: (page: string) => void;
   userName?: string;
   userEmail?: string;
   role?: "admin" | "employee";
@@ -77,7 +77,7 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode; labe
   );
 }
 
-function AdminSidebar({ navigate, activePage }: { navigate: (p: string) => void; activePage: string }) {
+function AdminSidebar({ navigate, activePage }: { navigate?: (p: string) => void; activePage: string }) {
   const items = [
     { label: "Chat", page: "chat", icon: <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg> },
     { label: "Dashboard", page: "dashboard", icon: <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" /><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" /><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" /><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" /></svg> },
@@ -88,7 +88,7 @@ function AdminSidebar({ navigate, activePage }: { navigate: (p: string) => void;
   return (
     <div className="flex flex-col justify-between bg-white border-r border-[#e2e8f0] overflow-hidden" style={{ width: 280, flexShrink: 0 }}>
       <div className="flex flex-col gap-[32px] p-[24px]">
-        <div className="flex gap-[12px] items-center cursor-pointer" onClick={() => navigate("dashboard")}>
+        <div className="flex gap-[12px] items-center cursor-pointer" onClick={() => navigate?.("dashboard")}>
           <div className="bg-[#4f46e5] flex items-center justify-center rounded-[8px] size-[32px] shrink-0">
             <svg className="size-[18px]" fill="none" viewBox="0 0 18 18"><path d={svgPaths.p39039880} stroke="white" strokeLinecap="round" strokeWidth="2" /></svg>
           </div>
@@ -97,13 +97,13 @@ function AdminSidebar({ navigate, activePage }: { navigate: (p: string) => void;
             <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#94a3b8] text-[10px]">RAG ASSISTANT</p>
           </div>
         </div>
-        <button onClick={() => navigate("chat")} className="bg-[#4f46e5] flex gap-[8px] items-center justify-center px-[16px] py-[12px] rounded-[8px] w-full border-none cursor-pointer hover:bg-[#4338ca] transition-colors">
+        <button onClick={() => navigate?.("chat")} className="bg-[#4f46e5] flex gap-[8px] items-center justify-center px-[16px] py-[12px] rounded-[8px] w-full border-none cursor-pointer hover:bg-[#4338ca] transition-colors">
           <svg className="size-[16px] shrink-0" fill="none" viewBox="0 0 16 16"><path d={svgPaths.p1529f7e0} stroke="white" strokeLinecap="round" strokeWidth="2" /></svg>
           <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[14px] text-white">New Conversation</p>
         </button>
         <div className="flex flex-col gap-[4px]">
           {items.map(({ label, page, icon }) => (
-            <NavItem key={page} label={label} active={activePage === page} onClick={() => navigate(page)}
+            <NavItem key={page} label={label} active={activePage === page} onClick={() => navigate?.(page)}
               icon={<span style={{ color: activePage === page ? "#4f46e5" : "#475569" }}>{icon}</span>}
             />
           ))}
@@ -113,7 +113,7 @@ function AdminSidebar({ navigate, activePage }: { navigate: (p: string) => void;
   );
 }
 
-function EmployeeSidebar({ navigate, activePage, userName }: { navigate: (p: string) => void; activePage: string; userName?: string }) {
+function EmployeeSidebar({ navigate, activePage, userName }: { navigate?: (p: string) => void; activePage: string; userName?: string }) {
   const items = [
     { label: "Chat", page: "employeeChat", icon: <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18"><path d={svgPaths.pea36900} stroke="currentColor" strokeLinecap="round" strokeWidth="2" /></svg> },
     { label: "History", page: "history", icon: <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18"><path d={svgPaths.p28c4aac0} stroke="currentColor" strokeLinecap="round" strokeWidth="2" /></svg> },
@@ -122,7 +122,7 @@ function EmployeeSidebar({ navigate, activePage, userName }: { navigate: (p: str
   return (
     <div className="flex flex-col justify-between bg-white border-r border-[#e2e8f0] overflow-hidden" style={{ width: 280, flexShrink: 0 }}>
       <div className="flex flex-col gap-[32px] p-[24px]">
-        <div className="flex gap-[12px] items-center cursor-pointer" onClick={() => navigate("employeeDashboard")}>
+        <div className="flex gap-[12px] items-center cursor-pointer" onClick={() => navigate?.("employeeDashboard")}>
           <div className="bg-[#4f46e5] flex items-center justify-center rounded-[8px] size-[32px] shrink-0">
             <svg className="size-[18px]" fill="none" viewBox="0 0 18 18"><path d={svgPaths.p39039880} stroke="white" strokeLinecap="round" strokeWidth="2" /></svg>
           </div>
@@ -131,13 +131,13 @@ function EmployeeSidebar({ navigate, activePage, userName }: { navigate: (p: str
             <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#94a3b8] text-[10px]">RAG ASSISTANT</p>
           </div>
         </div>
-        <button onClick={() => navigate("employeeChat")} className="bg-[#4f46e5] flex gap-[8px] items-center justify-center px-[16px] py-[12px] rounded-[8px] w-full border-none cursor-pointer hover:bg-[#4338ca] transition-colors">
+        <button onClick={() => navigate?.("employeeChat")} className="bg-[#4f46e5] flex gap-[8px] items-center justify-center px-[16px] py-[12px] rounded-[8px] w-full border-none cursor-pointer hover:bg-[#4338ca] transition-colors">
           <svg className="size-[16px] shrink-0" fill="none" viewBox="0 0 16 16"><path d={svgPaths.p1529f7e0} stroke="white" strokeLinecap="round" strokeWidth="2" /></svg>
           <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[14px] text-white">New Conversation</p>
         </button>
         <div className="flex flex-col gap-[4px]">
           {items.map(({ label, page, icon }) => (
-            <NavItem key={page} label={label} active={activePage === page} onClick={() => navigate(page)}
+            <NavItem key={page} label={label} active={activePage === page} onClick={() => navigate?.(page)}
               icon={<span style={{ color: activePage === page ? "#4f46e5" : "#475569" }}>{icon}</span>}
             />
           ))}

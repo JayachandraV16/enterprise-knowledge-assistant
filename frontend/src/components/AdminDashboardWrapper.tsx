@@ -1,7 +1,7 @@
 import AdminDashboard from "@/imports/08AdminDashboard/index";
 
 interface Props {
-  navigate: (page: string) => void;
+  navigate?: (page: string) => void;
 }
 
 // AdminDashboard layout:
@@ -18,7 +18,7 @@ export default function AdminDashboardWrapper({ navigate }: Props) {
 
       {/* Click overlay for "Upload New" button → documents page */}
       <button
-        onClick={() => navigate("documents")}
+        onClick={() => navigate?.("documents")}
         aria-label="Upload New Document"
         style={{
           position: "absolute",

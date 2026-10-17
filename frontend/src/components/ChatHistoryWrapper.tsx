@@ -32,7 +32,7 @@ function getTagStyle(tag: string) {
   return TAG_COLORS[tag] ?? { bg: "#f1f5f9", text: "#475569" };
 }
 
-export default function ChatHistoryWrapper({ navigate, chatPage = "chat", userName }: { navigate: (page: string) => void; chatPage?: string; userName?: string }) {
+export default function ChatHistoryWrapper({ navigate, chatPage = "chat", userName }: { navigate?: (page: string) => void; chatPage?: string; userName?: string }) {
   const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState("All");
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
@@ -145,7 +145,7 @@ export default function ChatHistoryWrapper({ navigate, chatPage = "chat", userNa
                   </div>
                   <div className="flex items-center gap-[8px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={() => navigate(chatPage)}
+                      onClick={() => navigate?.(chatPage)}
                       className="bg-[#4f46e5] text-white font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[13px] px-[14px] py-[7px] rounded-[7px] hover:bg-[#4338ca] transition-colors border-none cursor-pointer"
                     >
                       Resume

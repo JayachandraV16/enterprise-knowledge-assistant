@@ -33,7 +33,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
   Failed: { bg: "#fee2e2", text: "#dc2626", dot: "#dc2626" },
 };
 
-export default function DocumentsWrapper({ navigate }: { navigate: (page: string) => void }) {
+export default function DocumentsWrapper({ navigate }: { navigate?: (page: string) => void }) {
   const [docs, setDocs] = useState<Doc[]>(INITIAL_DOCS);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("All");
@@ -189,7 +189,7 @@ export default function DocumentsWrapper({ navigate }: { navigate: (page: string
                     </div>
                     <div className="flex items-center gap-[8px] opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => navigate("documentDetail")}
+                        onClick={() => navigate?.("documentDetail")}
                         className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#4f46e5] text-[13px] hover:underline bg-transparent border-none p-0 cursor-pointer"
                       >
                         View

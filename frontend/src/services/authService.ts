@@ -1,4 +1,5 @@
 import { api, delay, USE_MOCK, USER_KEY } from './api';
+import { toAuthResponse, toUser } from './adapters';
 import type { AuthResponse, User } from '../types';
 
 const DEMO: { password: string; user: User }[] = [
@@ -14,8 +15,8 @@ export const authService = {
       if (!m) throw new Error('Invalid email or password');
       return { token: `mock-jwt-${m.user.id}`, user: m.user };
     }
-    const { data } = await api.post<AuthResponse>('/api/auth/login', { email, password });
-    return data;
+    const { data } = await api.post<unknown>('/api/auth/login', { email, password });
+    return toAuthResponse(data);
   },
 
   async me(): Promise<User> {
@@ -24,7 +25,7 @@ export const authService = {
       if (!raw) throw new Error('Not authenticated');
       return JSON.parse(raw) as User;
     }
-    const { data } = await api.get<User>('/api/auth/me');
-    return data;
+    const { data } = await api.get<unknown>('/api/auth/me');
+    return toUser(data);
   },
 };

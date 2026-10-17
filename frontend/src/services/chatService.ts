@@ -1,4 +1,5 @@
 import { api, delay, USE_MOCK } from './api';
+import { toChatReply, toConversationList } from './adapters';
 import type { ChatReply, Conversation } from '../types';
 
 let mockHistory: Conversation[] = [];
@@ -28,14 +29,14 @@ export const chatService = {
       }
       return reply;
     }
-    const { data } = await api.post<ChatReply>('/api/chat', { question, conversationId });
-    return data;
+    const { data } = await api.post<unknown>('/api/chat', { question, conversationId });
+    return toChatReply(data);
   },
 
   async getHistory(): Promise<Conversation[]> {
     if (USE_MOCK) { await delay(300); return [...mockHistory]; }
-    const { data } = await api.get<Conversation[]>('/api/chat/history');
-    return data;
+    const { data } = await api.get<unknown>('/api/chat/history');
+    return toConversationList(data);
   },
 
   async deleteConversation(id: string): Promise<void> {

@@ -1,4 +1,5 @@
 import { api, delay, USE_MOCK } from './api';
+import { toDocument, unwrapList } from './adapters';
 import type { DocumentType, KnowledgeDocument } from '../types';
 
 let mockDocs: KnowledgeDocument[] = [
@@ -9,8 +10,8 @@ let mockDocs: KnowledgeDocument[] = [
 export const documentService = {
   async list(): Promise<KnowledgeDocument[]> {
     if (USE_MOCK) { await delay(300); return [...mockDocs]; }
-    const { data } = await api.get<KnowledgeDocument[]>('/api/documents');
-    return data;
+    const { data } = await api.get<unknown>('/api/documents');
+    return unwrapList(data).map(toDocument);
   },
 
   // Admin only (SRS 2.3). Backend + AI service then parse, chunk, embed (SRS 3.2).
@@ -30,10 +31,10 @@ export const documentService = {
     }
     const form = new FormData();
     form.append('file', file);
-    const { data } = await api.post<KnowledgeDocument>('/api/documents/upload', form, {
+    const { data } = await api.post<unknown>('/api/documents/upload', form, {
       onUploadProgress: (e) => e.total && onProgress?.(Math.round((e.loaded * 100) / e.total)),
     });
-    return data;
+    return toDocument(data);
   },
 
   async remove(id: string): Promise<void> {

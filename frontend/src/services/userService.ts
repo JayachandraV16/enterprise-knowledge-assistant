@@ -1,4 +1,5 @@
 import { api, delay, USE_MOCK } from './api';
+import { toUser, unwrapList } from './adapters';
 import type { User, UserInput } from '../types';
 
 let mockUsers: User[] = [
@@ -10,7 +11,8 @@ let mockUsers: User[] = [
 export const userService = {
   async list(): Promise<User[]> {
     if (USE_MOCK) { await delay(300); return [...mockUsers]; }
-    return (await api.get<User[]>('/api/users')).data;
+    const { data } = await api.get<unknown>('/api/users');
+    return unwrapList(data).map(toUser);
   },
   async create(input: UserInput): Promise<User> {
     if (USE_MOCK) {
@@ -18,7 +20,8 @@ export const userService = {
       mockUsers = [...mockUsers, u];
       return u;
     }
-    return (await api.post<User>('/api/users', input)).data;
+    const { data } = await api.post<unknown>('/api/users', input);
+    return toUser(data);
   },
   async update(id: string, input: Partial<UserInput>): Promise<User> {
     if (USE_MOCK) {
@@ -26,7 +29,8 @@ export const userService = {
       mockUsers = mockUsers.map((u) => (u.id === id ? { ...u, ...safe } : u));
       return mockUsers.find((u) => u.id === id)!;
     }
-    return (await api.put<User>(`/api/users/${id}`, input)).data;
+    const { data } = await api.put<unknown>(`/api/users/${id}`, input);
+    return toUser(data);
   },
   async setActive(id: string, active: boolean): Promise<void> {
     if (USE_MOCK) { mockUsers = mockUsers.map((u) => (u.id === id ? { ...u, active } : u)); return; }

@@ -36,7 +36,15 @@ export function getErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     if (!err.response) return 'Cannot reach the server. Please try again.';
     const data = err.response.data as { message?: string } | undefined;
-    return data?.message ?? `Request failed (${err.response.status})`;
+    if (data?.message && typeof data.message === 'string' && data.message.trim()) {
+      return data.message;
+    }
+    const status = err.response.status;
+    if (status === 403) return "You don't have permission to do this";
+    if (status === 404) return 'The requested resource was not found';
+    if (status === 413) return 'File is too large for the server';
+    if (status >= 500 && status < 600) return 'Server error. Please try again';
+    return `Request failed (${status})`;
   }
   return err instanceof Error ? err.message : 'Something went wrong';
 }

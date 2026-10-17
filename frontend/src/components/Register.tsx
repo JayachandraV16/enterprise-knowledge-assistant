@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { userService } from "@/services/userService";
+import { getErrorMessage } from "@/services/api";
+import type { Role } from "@/types";
 import svgPaths from "@/imports/02Register/svg-0ysdc4rwcd";
 
 function VisualPanel() {
@@ -77,6 +81,7 @@ interface RegisterProps {
 }
 
 export default function Register({ onLogin, onRegister }: RegisterProps) {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -86,7 +91,6 @@ export default function Register({ onLogin, onRegister }: RegisterProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const EyeIcon = ({ active }: { active: boolean }) => (
     <svg className="size-[16px]" fill="none" viewBox="0 0 20 20">
@@ -111,10 +115,21 @@ export default function Register({ onLogin, onRegister }: RegisterProps) {
     }
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setLoading(false);
-    setSuccess(true);
-    onRegister?.(name, email, password, role);
+    try {
+      const roleVal: Role = role === "admin" ? "ADMIN" : "EMPLOYEE";
+      await userService.create({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role: roleVal,
+      });
+      onRegister?.(name, email, password, role);
+      navigate("/users");
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -122,29 +137,12 @@ export default function Register({ onLogin, onRegister }: RegisterProps) {
       <VisualPanel />
 
       <div className="bg-white flex-1 overflow-y-auto flex flex-col items-center justify-center py-[40px] px-[32px]">
-        {success ? (
-          <div className="flex flex-col gap-[16px] w-full max-w-[400px] items-center text-center">
-            <div className="bg-[#eef2ff] rounded-full p-[16px]">
-              <svg className="size-[32px]" fill="none" viewBox="0 0 24 24">
-                <path d="M5 13l4 4L19 7" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[22px]">Account Created!</p>
-            <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[14px]">Your account has been registered. An administrator will activate it shortly.</p>
-            <button
-              onClick={onLogin}
-              className="bg-[#4f46e5] text-white font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[15px] py-[12px] px-[24px] rounded-[8px] hover:bg-[#4338ca] transition-colors border-none cursor-pointer w-full"
-            >
-              Back to Login
-            </button>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-[14px] w-full max-w-[400px]">
+          {/* Header */}
+          <div className="flex flex-col gap-[6px] mb-[4px]">
+            <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[24px] tracking-[-0.288px]">Register User</p>
+            <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[14px] leading-[1.5]">Create an account for an employee or administrator.</p>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-[14px] w-full max-w-[400px]">
-            {/* Header */}
-            <div className="flex flex-col gap-[6px] mb-[4px]">
-              <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[24px] tracking-[-0.288px]">Create an account</p>
-              <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[14px] leading-[1.5]">Register with your corporate email to get started.</p>
-            </div>
 
             {/* Full Name */}
             <InputField
@@ -246,19 +244,20 @@ export default function Register({ onLogin, onRegister }: RegisterProps) {
               )}
             </button>
 
-            {/* Sign in link */}
-            <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[14px] text-[#475569] text-center w-full">
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={onLogin}
-                className="text-[#4f46e5] hover:underline bg-transparent border-none p-0 cursor-pointer font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold"
-              >
-                Log in
-              </button>
-            </p>
-          </form>
-        )}
+          {/* Back to users link */}
+          <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[14px] text-[#475569] text-center w-full">
+            <button
+              type="button"
+              onClick={() => {
+                if (onLogin) onLogin();
+                else navigate("/users");
+              }}
+              className="text-[#4f46e5] hover:underline bg-transparent border-none p-0 cursor-pointer font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold"
+            >
+              ← Back to Users
+            </button>
+          </p>
+        </form>
       </div>
     </div>
   );

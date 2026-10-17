@@ -226,7 +226,7 @@ describe('getErrorMessage', () => {
       isAxiosError: true,
       config: { headers: {} as never },
       response: status !== undefined ? { status, data, headers: {}, config: {} as never, statusText: '' } : undefined,
-    } as AxiosError;
+    } as unknown as AxiosError;
   }
 
   it('uses backend message when present', () => {

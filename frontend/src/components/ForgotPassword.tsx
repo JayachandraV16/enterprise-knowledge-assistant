@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import svgPaths from "@/imports/03ForgotPassword/svg-eb04k4wam4";
 
 function VisualPanel() {
@@ -35,6 +36,7 @@ interface ForgotPasswordProps {
 }
 
 export default function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -73,8 +75,14 @@ export default function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
             <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[14px] leading-[1.6]">
               We sent a password reset link to <span className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b]">{email}</span>. Check your inbox and follow the instructions.
             </p>
+            <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#64748b] text-[13px] leading-[1.5]">
+              Contact your administrator if you don't receive an email
+            </p>
             <button
-              onClick={onBackToLogin}
+              onClick={() => {
+                if (onBackToLogin) onBackToLogin();
+                else navigate("/login");
+              }}
               className="bg-[#4f46e5] text-white font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[15px] py-[12px] px-[24px] rounded-[8px] hover:bg-[#4338ca] transition-colors border-none cursor-pointer w-full"
             >
               Back to Login
@@ -141,7 +149,10 @@ export default function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
             <p className="text-center">
               <button
                 type="button"
-                onClick={onBackToLogin}
+                onClick={() => {
+                  if (onBackToLogin) onBackToLogin();
+                  else navigate("/login");
+                }}
                 className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#4f46e5] text-[14px] hover:underline bg-transparent border-none p-0 cursor-pointer"
               >
                 ← Back to login

@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { getErrorMessage } from "@/services/api";
 import svgPaths from "@/imports/01Login/svg-k8ilpwcooh";
 
 function BrainCircuit() {
@@ -86,7 +89,9 @@ const DEMO_HINTS = [
   { role: "Employee", email: "employee@enterprise.com", password: "Emp@123" },
 ];
 
-export default function Login({ onLogin, onForgotPassword, onRegister }: LoginProps) {
+export default function Login({ onLogin, onForgotPassword }: LoginProps) {
+  const navigate = useNavigate();
+  const { login, logout } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "employee">("employee");
@@ -103,11 +108,27 @@ export default function Login({ onLogin, onForgotPassword, onRegister }: LoginPr
     }
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setLoading(false);
-    const result = onLogin?.(email, password, role);
-    if (result && !result.ok) {
-      setError(result.error ?? "Login failed.");
+    try {
+      const user = await login(email, password);
+      const expectedRole = role === "admin" ? "ADMIN" : "EMPLOYEE";
+      if (user.role !== expectedRole) {
+        logout();
+        const roleLabel = role === "admin" ? "Administrator" : "Employee";
+        setError(`This account is not an ${roleLabel}`);
+        return;
+      }
+      if (onLogin) {
+        const res = onLogin(email, password, role);
+        if (res && !res.ok) {
+          setError(res.error ?? "Login failed.");
+          return;
+        }
+      }
+      navigate("/dashboard");
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -221,30 +242,39 @@ export default function Login({ onLogin, onForgotPassword, onRegister }: LoginPr
               </div>
               <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#475569] text-[13px] whitespace-nowrap">Remember session</p>
             </label>
-            <button type="button" onClick={onForgotPassword} className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#4f46e5] text-[13px] whitespace-nowrap hover:underline bg-transparent border-none p-0 cursor-pointer">
+            <button
+              type="button"
+              onClick={() => {
+                if (onForgotPassword) onForgotPassword();
+                else navigate("/forgot-password");
+              }}
+              className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#4f46e5] text-[13px] whitespace-nowrap hover:underline bg-transparent border-none p-0 cursor-pointer"
+            >
               Forgot password?
             </button>
           </div>
 
-          {/* Demo credentials — above Login button */}
-          <div className="w-full rounded-[8px] border border-[#e2e8f0] bg-[#f8fafc] p-[10px] flex flex-col gap-[4px]">
-            <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[10px] text-[#64748b] tracking-[0.5px] uppercase mb-[2px]">Demo Credentials — click to fill</p>
-            {DEMO_HINTS.map((h) => (
-              <button
-                key={h.role}
-                type="button"
-                onClick={() => {
-                  setEmail(h.email);
-                  setPassword(h.password);
-                  setRole(h.role === "Administrator" ? "admin" : "employee");
-                }}
-                className="text-left rounded-[6px] px-[8px] py-[5px] hover:bg-[#eef2ff] transition-colors cursor-pointer border-none bg-transparent w-full"
-              >
-                <span className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[12px] text-[#4f46e5]">{h.role}:</span>
-                <span className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[11px] text-[#475569] ml-[6px]">{h.email} / {h.password}</span>
-              </button>
-            ))}
-          </div>
+          {/* Demo credentials — above Login button (only shown when VITE_USE_MOCK === 'true') */}
+          {import.meta.env.VITE_USE_MOCK === "true" && (
+            <div className="w-full rounded-[8px] border border-[#e2e8f0] bg-[#f8fafc] p-[10px] flex flex-col gap-[4px]">
+              <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[10px] text-[#64748b] tracking-[0.5px] uppercase mb-[2px]">Demo Credentials — click to fill</p>
+              {DEMO_HINTS.map((h) => (
+                <button
+                  key={h.role}
+                  type="button"
+                  onClick={() => {
+                    setEmail(h.email);
+                    setPassword(h.password);
+                    setRole(h.role === "Administrator" ? "admin" : "employee");
+                  }}
+                  className="text-left rounded-[6px] px-[8px] py-[5px] hover:bg-[#eef2ff] transition-colors cursor-pointer border-none bg-transparent w-full"
+                >
+                  <span className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[12px] text-[#4f46e5]">{h.role}:</span>
+                  <span className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[11px] text-[#475569] ml-[6px]">{h.email} / {h.password}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Error */}
           {error && (
@@ -269,14 +299,6 @@ export default function Login({ onLogin, onForgotPassword, onRegister }: LoginPr
               <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[15px] text-white tracking-[-0.1px]">Log In</p>
             )}
           </button>
-
-          {/* Create account — below Log In, as in Figma */}
-          <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[14px] text-[#475569] text-center w-full">
-            {"Don't have an account? "}
-            <button type="button" onClick={onRegister} className="text-[#4f46e5] hover:underline bg-transparent border-none p-0 cursor-pointer font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold">
-              Create account
-            </button>
-          </p>
 
           <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#94a3b8] text-[10px] text-center tracking-[-0.04px]">Authorized access only. Unauthorized attempts are logged.</p>
         </form>

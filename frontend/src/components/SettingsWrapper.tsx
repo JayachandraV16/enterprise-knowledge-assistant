@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { authService } from "@/services/authService";
+import { getErrorMessage } from "@/services/api";
 import svgPaths from "@/imports/04EmployeeDashboard/svg-0eglxyxvnv";
 import imgFrame from "@/imports/04EmployeeDashboard/b8581a3a8f9a19b6eec05845c18e07081f487330.png";
 
@@ -14,6 +16,7 @@ interface Props {
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
+      type="button"
       onClick={() => onChange(!value)}
       className={`relative inline-flex h-[24px] w-[40px] shrink-0 items-center rounded-full transition-colors border-none cursor-pointer ${value ? "bg-[#4f46e5]" : "bg-[#e2e8f0]"}`}
     >
@@ -34,9 +37,28 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
   );
 }
 
-function Field({ label, type = "text", value, onChange, placeholder, hint, showToggle, showValue, onToggle, readOnly }: {
-  label: string; type?: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; hint?: string; showToggle?: boolean; showValue?: boolean; onToggle?: () => void; readOnly?: boolean;
+function Field({
+  label,
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+  hint,
+  showToggle,
+  showValue,
+  onToggle,
+  readOnly,
+}: {
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  hint?: string;
+  showToggle?: boolean;
+  showValue?: boolean;
+  onToggle?: () => void;
+  readOnly?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-[6px]">
@@ -54,9 +76,15 @@ function Field({ label, type = "text", value, onChange, placeholder, hint, showT
           <button type="button" onClick={onToggle} className="shrink-0 border-none bg-transparent p-0 cursor-pointer text-[#94a3b8] hover:text-[#475569]">
             <svg className="size-[16px]" fill="none" viewBox="0 0 20 20">
               {showValue ? (
-                <><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" /></>
+                <>
+                  <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+                </>
               ) : (
-                <><path d="M3 3l14 14M11.5 11.5A2.5 2.5 0 017.5 7.5M2 10c1.5-3 4-5 8-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><path d="M18 10c-1.5 3-4 5-8 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></>
+                <>
+                  <path d="M3 3l14 14M11.5 11.5A2.5 2.5 0 017.5 7.5M2 10c1.5-3 4-5 8-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M18 10c-1.5 3-4 5-8 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </>
               )}
             </svg>
           </button>
@@ -221,16 +249,13 @@ function EmployeeSidebar({ navigate, activePage, userName }: { navigate?: (p: st
   );
 }
 
-export default function SettingsWrapper({ navigate: navProp, userName: uNameProp, userEmail: uEmailProp, role: roleProp }: Props) {
+export default function SettingsWrapper({ navigate: navProp, role: roleProp }: Props) {
   const { user, isAdmin } = useAuth();
   const routerNav = useNavigate();
   const navigate = navProp || ((p: string) => routerNav(`/${p}`));
-  const userName = uNameProp || user?.name || "";
-  const userEmail = uEmailProp || user?.email || "";
   const role = roleProp || (isAdmin ? "admin" : "employee");
-  const [displayName, setDisplayName] = useState(userName || "");
-  const [workRole, setWorkRole] = useState("");
-  const [profileSaved, setProfileSaved] = useState(false);
+
+  // Password change state
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -238,84 +263,201 @@ export default function SettingsWrapper({ navigate: navProp, userName: uNameProp
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pwError, setPwError] = useState("");
-  const [pwSaved, setPwSaved] = useState(false);
-  const [emailNotifs, setEmailNotifs] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [compactView, setCompactView] = useState(false);
-  const [prefSaved, setPrefSaved] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwToast, setPwToast] = useState(false);
 
-  const saveProfile = () => { setProfileSaved(true); setTimeout(() => setProfileSaved(false), 2500); };
-  const savePreferences = () => { setPrefSaved(true); setTimeout(() => setPrefSaved(false), 2500); };
-  const savePassword = () => {
-    setPwError("");
-    if (!currentPw || !newPw || !confirmPw) { setPwError("All password fields are required."); return; }
-    if (newPw.length < 8) { setPwError("New password must be at least 8 characters."); return; }
-    if (newPw !== confirmPw) { setPwError("New passwords do not match."); return; }
-    setCurrentPw(""); setNewPw(""); setConfirmPw("");
-    setPwSaved(true); setTimeout(() => setPwSaved(false), 2500);
+  // Theme state: really switch dark mode on <html> and persist in localStorage
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const saved = localStorage.getItem("theme");
+    if (saved) return saved === "dark";
+    return document.documentElement.classList.contains("dark");
+  });
+
+  // UI-only notification toggle
+  const [emailNotifs, setEmailNotifs] = useState(true);
+
+  // Sync theme to <html> on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark") {
+      document.documentElement.classList.add("dark");
+    } else if (saved === "light") {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const handleThemeToggle = (isDark: boolean) => {
+    setDarkMode(isDark);
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
   };
 
-  const checkIcon = <svg className="size-[16px]" fill="none" viewBox="0 0 20 20"><path d="M4 10l4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  const handlePasswordChange = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setPwError("");
+    setPwToast(false);
+
+    if (!currentPw) {
+      setPwError("Current password is required.");
+      return;
+    }
+    if (newPw.length < 8) {
+      setPwError("New password must be at least 8 characters.");
+      return;
+    }
+    if (newPw === currentPw) {
+      setPwError("New password must be different from current password.");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setPwError("Confirm password does not match.");
+      return;
+    }
+
+    setPwLoading(true);
+    try {
+      await authService.changePassword(currentPw, newPw);
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+      setPwToast(true);
+      setTimeout(() => setPwToast(false), 3500);
+    } catch (err) {
+      setPwError(getErrorMessage(err));
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
+  const checkIcon = (
+    <svg className="size-[16px]" fill="none" viewBox="0 0 20 20">
+      <path d="M4 10l4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 
   return (
     <div className="size-full flex bg-[#f8fafc] overflow-hidden">
-      {role === "employee"
-        ? <EmployeeSidebar navigate={navigate} activePage="settings" userName={userName} />
-        : <AdminSidebar navigate={navigate} activePage="settings" />}
+      {role === "employee" ? (
+        <EmployeeSidebar navigate={navigate} activePage="settings" userName={user?.name} />
+      ) : (
+        <AdminSidebar navigate={navigate} activePage="settings" />
+      )}
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+        {/* Topbar */}
         <div className="bg-white border-b border-[#e2e8f0] flex items-center px-[32px] py-[20px] shrink-0">
           <div>
             <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[20px] tracking-[-0.2px]">Settings</p>
             <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px] mt-[2px]">Manage your account and preferences</p>
           </div>
         </div>
+
         <div className="flex-1 min-h-0 overflow-y-auto px-[32px] py-[28px] flex flex-col gap-[20px]">
-          <Card title="Profile" subtitle="Update your display name and role">
-            <Field label="Display Name" value={displayName} onChange={setDisplayName} placeholder="Your name" />
-            <Field label="Email" value={userEmail || ""} onChange={() => {}} placeholder="your@email.com" hint="Email cannot be changed" readOnly />
-            <Field label="Work Role" value={workRole} onChange={setWorkRole} placeholder="e.g. Senior Analyst" />
-            <div className="flex items-center gap-[12px]">
-              <button onClick={saveProfile} className="bg-[#4f46e5] text-white font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[14px] px-[16px] py-[10px] rounded-[8px] hover:bg-[#4338ca] transition-colors border-none cursor-pointer">Save Changes</button>
-              {profileSaved && <span className="flex items-center gap-[6px] font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#16a34a] text-[13px]">{checkIcon} Profile updated</span>}
+          {/* Profile: show the logged-in user from useAuth() read-only (name, email, role) */}
+          <Card title="Profile" subtitle="Your organization account details">
+            <Field label="Full Name" value={user?.name ?? ""} onChange={() => {}} readOnly />
+            <Field label="Email Address" value={user?.email ?? ""} onChange={() => {}} readOnly hint="Email address is managed by your organization" />
+            <Field label="Account Role" value={user?.role === "ADMIN" ? "Administrator" : "Employee"} onChange={() => {}} readOnly />
+          </Card>
+
+          {/* AI Model: read-only text with note "Models run locally via Ollama". No editable config, no API keys */}
+          <Card title="AI Model" subtitle="Offline local inference architecture">
+            <div className="flex flex-col gap-[6px]">
+              <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">Active Model</p>
+              <div className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-[8px] px-[12px] py-[10px]">
+                <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#1e293b] text-[14px]">
+                  Local Offline Model (Ollama)
+                </p>
+              </div>
+              <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[12px]">
+                Models run locally via Ollama. No external API keys or cloud connections are used.
+              </p>
             </div>
           </Card>
+
+          {/* Password change: current, new, confirm with validation, loading, error text and success toast */}
           <Card title="Security" subtitle="Change your account password">
-            <Field label="Current Password" type="password" value={currentPw} onChange={setCurrentPw} placeholder="••••••••" showToggle showValue={showCurrent} onToggle={() => setShowCurrent(!showCurrent)} />
-            <Field label="New Password" type="password" value={newPw} onChange={setNewPw} placeholder="••••••••" hint="Minimum 8 characters" showToggle showValue={showNew} onToggle={() => setShowNew(!showNew)} />
-            <Field label="Confirm New Password" type="password" value={confirmPw} onChange={setConfirmPw} placeholder="••••••••" showToggle showValue={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
-            {pwError && <p className="text-red-500 text-[13px] font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium">{pwError}</p>}
-            <div className="flex items-center gap-[12px]">
-              <button onClick={savePassword} className="bg-[#4f46e5] text-white font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[14px] px-[16px] py-[10px] rounded-[8px] hover:bg-[#4338ca] transition-colors border-none cursor-pointer">Update Password</button>
-              {pwSaved && <span className="flex items-center gap-[6px] font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#16a34a] text-[13px]">{checkIcon} Password updated</span>}
-            </div>
-          </Card>
-          <Card title="Preferences" subtitle="Notification and display preferences">
-            {[
-              { label: "Email Notifications", desc: "Receive email alerts for important updates", value: emailNotifs, onChange: setEmailNotifs },
-              { label: "Dark Mode", desc: "Switch to a darker interface theme", value: darkMode, onChange: setDarkMode },
-              { label: "Compact View", desc: "Reduce spacing for a denser layout", value: compactView, onChange: setCompactView },
-            ].map(({ label, desc, value, onChange }) => (
-              <div key={label} className="flex items-center justify-between gap-[16px]">
-                <div>
-                  <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">{label}</p>
-                  <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px] mt-[1px]">{desc}</p>
+            <form onSubmit={handlePasswordChange} className="flex flex-col gap-[16px]">
+              <Field
+                label="Current Password"
+                type="password"
+                value={currentPw}
+                onChange={setCurrentPw}
+                placeholder="••••••••"
+                showToggle
+                showValue={showCurrent}
+                onToggle={() => setShowCurrent(!showCurrent)}
+              />
+              <Field
+                label="New Password"
+                type="password"
+                value={newPw}
+                onChange={setNewPw}
+                placeholder="••••••••"
+                hint="Minimum 8 characters"
+                showToggle
+                showValue={showNew}
+                onToggle={() => setShowNew(!showNew)}
+              />
+              <Field
+                label="Confirm New Password"
+                type="password"
+                value={confirmPw}
+                onChange={setConfirmPw}
+                placeholder="••••••••"
+                showToggle
+                showValue={showConfirm}
+                onToggle={() => setShowConfirm(!showConfirm)}
+              />
+
+              {pwError && (
+                <div className="bg-[#fef2f2] border border-[#fecaca] text-[#dc2626] rounded-[8px] p-[10px] text-[13px] flex items-center gap-[8px]">
+                  <svg className="size-[16px] shrink-0" fill="none" viewBox="0 0 20 20">
+                    <path d="M10 9v4m0 3h.01M10 2a8 8 0 100 16 8 8 0 000-16z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  <span>{pwError}</span>
                 </div>
-                <Toggle value={value} onChange={onChange} />
+              )}
+
+              <div className="flex items-center gap-[12px]">
+                <button
+                  type="submit"
+                  disabled={pwLoading}
+                  className="bg-[#4f46e5] text-white font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[14px] px-[16px] py-[10px] rounded-[8px] hover:bg-[#4338ca] transition-colors border-none cursor-pointer disabled:opacity-50"
+                >
+                  {pwLoading ? "Updating Password..." : "Update Password"}
+                </button>
+                {pwToast && (
+                  <span className="flex items-center gap-[6px] font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#16a34a] text-[13px]">
+                    {checkIcon} Password changed successfully
+                  </span>
+                )}
               </div>
-            ))}
-            <div className="flex items-center gap-[12px] pt-[4px]">
-              <button onClick={savePreferences} className="bg-[#4f46e5] text-white font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[14px] px-[16px] py-[10px] rounded-[8px] hover:bg-[#4338ca] transition-colors border-none cursor-pointer">Save Preferences</button>
-              {prefSaved && <span className="flex items-center gap-[6px] font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#16a34a] text-[13px]">{checkIcon} Preferences saved</span>}
-            </div>
+            </form>
           </Card>
-          <Card title="Danger Zone" subtitle="Irreversible account actions">
-            <div className="flex items-center justify-between gap-[16px] border border-red-100 rounded-[8px] bg-red-50 px-[16px] py-[14px]">
+
+          {/* Preferences: theme toggle really switches dark mode on <html>; notifications toggle stays UI-only */}
+          <Card title="Preferences" subtitle="Display and notification options">
+            <div className="flex items-center justify-between gap-[16px]">
               <div>
-                <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-red-700 text-[14px]">Deactivate Account</p>
-                <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-red-400 text-[13px] mt-[1px]">This will suspend your access. Contact an admin to reactivate.</p>
+                <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">Dark Mode</p>
+                <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px] mt-[1px]">Switch between light and dark visual themes</p>
               </div>
-              <button className="border border-red-300 bg-white text-red-600 font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[13px] px-[14px] py-[8px] rounded-[7px] hover:bg-red-50 transition-colors cursor-pointer whitespace-nowrap">Deactivate</button>
+              <Toggle value={darkMode} onChange={handleThemeToggle} />
+            </div>
+
+            <div className="flex items-center justify-between gap-[16px]">
+              <div>
+                <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">Email Notifications</p>
+                <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px] mt-[1px]">Receive email notifications for internal updates</p>
+              </div>
+              <Toggle value={emailNotifs} onChange={setEmailNotifs} />
             </div>
           </Card>
         </div>

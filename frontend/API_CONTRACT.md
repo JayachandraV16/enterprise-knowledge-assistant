@@ -7,6 +7,7 @@ Roles: `ADMIN`, `EMPLOYEE`. Errors: `{ "message": "..." }` with proper HTTP stat
 |---|---|---|---|---|
 | POST | /api/auth/login | public | `{email,password}` | `{token, user:{id,name,email,role,active}}` |
 | GET | /api/auth/me | any | - | `user` |
+| PUT | /api/auth/change-password | any | `{currentPassword,newPassword}` | 204 (PROPOSED) |
 | GET | /api/documents | any | - | `[{id,fileName,fileType(PDF/DOCX/CSV),sizeBytes,pageCount?,uploadedAt,status(PROCESSING/PROCESSED/FAILED)}]` |
 | POST | /api/documents/upload | ADMIN | multipart `file` | `document` (status PROCESSING) |
 | DELETE | /api/documents/{id} | ADMIN | - | 204 |

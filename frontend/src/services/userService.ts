@@ -2,10 +2,16 @@ import { api, delay, USE_MOCK } from './api';
 import { toUser, unwrapList } from './adapters';
 import type { User, UserInput } from '../types';
 
-let mockUsers: User[] = [
+export const INITIAL_MOCK_USERS: User[] = [
   { id: '1', name: 'Admin', email: 'admin@enterprise.com', role: 'ADMIN', active: true },
   { id: '2', name: 'Employee', email: 'employee@enterprise.com', role: 'EMPLOYEE', active: true },
 ];
+
+let mockUsers: User[] = [...INITIAL_MOCK_USERS];
+
+export function _resetMockUsers(): void {
+  mockUsers = JSON.parse(JSON.stringify(INITIAL_MOCK_USERS));
+}
 
 // All admin only (SRS 2.3: Administrator manages users)
 export const userService = {

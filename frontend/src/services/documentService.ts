@@ -2,10 +2,16 @@ import { api, delay, USE_MOCK } from './api';
 import { toDocument, unwrapList } from './adapters';
 import type { DocumentType, KnowledgeDocument } from '../types';
 
-let mockDocs: KnowledgeDocument[] = [
+export const INITIAL_MOCK_DOCS: KnowledgeDocument[] = [
   { id: 'd1', fileName: 'Security_Policy.pdf', fileType: 'PDF', sizeBytes: 2_400_000, pageCount: 24, uploadedAt: '2026-08-01T10:00:00Z', status: 'PROCESSED' },
   { id: 'd2', fileName: 'HR_Handbook.docx', fileType: 'DOCX', sizeBytes: 1_100_000, pageCount: 40, uploadedAt: '2026-08-02T09:30:00Z', status: 'PROCESSED' },
 ];
+
+let mockDocs: KnowledgeDocument[] = [...INITIAL_MOCK_DOCS];
+
+export function _resetMockDocs(): void {
+  mockDocs = JSON.parse(JSON.stringify(INITIAL_MOCK_DOCS));
+}
 
 export const documentService = {
   async list(): Promise<KnowledgeDocument[]> {

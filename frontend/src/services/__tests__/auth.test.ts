@@ -62,27 +62,32 @@ describe('Authentication and User Service', () => {
     });
 
     it('detects mismatch when admin logs in with Employee selected', () => {
+      const checkExpectedRole = (role: 'admin' | 'employee') => (role === 'admin' ? 'ADMIN' : 'EMPLOYEE');
+      const getRoleLabel = (role: 'admin' | 'employee') => (role === 'admin' ? 'Administrator' : 'Employee');
+
       const selectedRole: 'admin' | 'employee' = 'employee';
       const userRole = 'ADMIN';
-      const expectedRole = selectedRole === 'admin' ? 'ADMIN' : 'EMPLOYEE';
+      const expectedRole = checkExpectedRole(selectedRole);
       expect(userRole !== expectedRole).toBe(true);
 
-      const roleLabel = selectedRole === 'admin' ? 'Administrator' : 'Employee';
+      const roleLabel = getRoleLabel(selectedRole);
       const error = `This account is not an ${roleLabel}`;
       expect(error).toBe('This account is not an Employee');
     });
 
     it('accepts matching admin role', () => {
+      const checkExpectedRole = (role: 'admin' | 'employee') => (role === 'admin' ? 'ADMIN' : 'EMPLOYEE');
       const selectedRole: 'admin' | 'employee' = 'admin';
       const userRole = 'ADMIN';
-      const expectedRole = selectedRole === 'admin' ? 'ADMIN' : 'EMPLOYEE';
+      const expectedRole = checkExpectedRole(selectedRole);
       expect(userRole === expectedRole).toBe(true);
     });
 
     it('accepts matching employee role', () => {
+      const checkExpectedRole = (role: 'admin' | 'employee') => (role === 'admin' ? 'ADMIN' : 'EMPLOYEE');
       const selectedRole: 'admin' | 'employee' = 'employee';
       const userRole = 'EMPLOYEE';
-      const expectedRole = selectedRole === 'admin' ? 'ADMIN' : 'EMPLOYEE';
+      const expectedRole = checkExpectedRole(selectedRole);
       expect(userRole === expectedRole).toBe(true);
     });
   });

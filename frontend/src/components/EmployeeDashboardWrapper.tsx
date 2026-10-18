@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import EmployeeDashboard from "@/imports/04EmployeeDashboard/index";
 
 interface Props {
@@ -5,37 +7,71 @@ interface Props {
   userName?: string;
 }
 
-// Sidebar layout constants (matches App.tsx)
+// Sidebar layout constants (matches Figma layout)
 const SIDEBAR_W = 280;
 const NAV_TOP = 172;
 const ITEM_H = 44;
 const ITEM_GAP = 4;
 const NEW_CHAT_TOP = 96;
 
-// Quick action card positions (right content area, empirically positioned to match Figma layout)
-// The content area starts at x=280. Cards are in a row, approximately:
-// TopBar is ~64px, then welcome section ~80px, then QuickActions row starts at y~200
-// Cards are roughly equal thirds of the content width starting at ~32px margin from sidebar edge
+// Quick action card positions (right content area)
 const TOPBAR_H = 64;
-const WELCOME_H = 112; // header row height estimate
-const CARDS_Y = TOPBAR_H + WELCOME_H; // ~176px from top
-const CARD_H = 160; // estimated card height
+const WELCOME_H = 112;
+const CARDS_Y = TOPBAR_H + WELCOME_H;
+const CARD_H = 160;
 
 export default function EmployeeDashboardWrapper({ navigate, userName: _userName }: Props) {
+  const routerNavigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleNav = (target: string) => {
+    if (navigate) {
+      navigate(target);
+    } else {
+      if (target === "employeeChat" || target === "chat") {
+        routerNavigate("/chat");
+      } else if (target === "history") {
+        routerNavigate("/history");
+      } else if (target === "settings") {
+        routerNavigate("/settings");
+      } else if (target === "dashboard" || target === "employeeDashboard") {
+        routerNavigate("/dashboard");
+      } else {
+        routerNavigate(target.startsWith("/") ? target : `/${target}`);
+      }
+    }
+  };
+
   return (
     <div className="size-full relative">
       {/* Static import for full visual render */}
       <EmployeeDashboard />
-
 
       {/* Sidebar nav overlay */}
       <div
         className="absolute inset-y-0 left-0"
         style={{ width: SIDEBAR_W, pointerEvents: "none", zIndex: 10 }}
       >
+        {/* Brand / Logo -> Dashboard */}
+        <button
+          onClick={() => handleNav("dashboard")}
+          aria-label="Dashboard"
+          style={{
+            pointerEvents: "all",
+            position: "absolute",
+            top: 24,
+            left: 24,
+            width: 160,
+            height: 40,
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+          }}
+        />
+
         {/* New Conversation button */}
         <button
-          onClick={() => navigate?.("employeeChat")}
+          onClick={() => handleNav("chat")}
           aria-label="New Conversation"
           style={{
             pointerEvents: "all",
@@ -51,7 +87,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         />
         {/* Chat nav */}
         <button
-          onClick={() => navigate?.("employeeChat")}
+          onClick={() => handleNav("chat")}
           aria-label="Chat"
           style={{
             pointerEvents: "all",
@@ -67,7 +103,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         />
         {/* History nav */}
         <button
-          onClick={() => navigate?.("history")}
+          onClick={() => handleNav("history")}
           aria-label="History"
           style={{
             pointerEvents: "all",
@@ -83,7 +119,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         />
         {/* Settings nav */}
         <button
-          onClick={() => navigate?.("settings")}
+          onClick={() => handleNav("settings")}
           aria-label="Settings"
           style={{
             pointerEvents: "all",
@@ -97,6 +133,27 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
             border: "none",
           }}
         />
+
+        {/* Logout button at bottom of sidebar */}
+        <button
+          onClick={() => {
+            logout();
+            routerNavigate("/login");
+          }}
+          aria-label="Logout"
+          title="Logout"
+          style={{
+            pointerEvents: "all",
+            position: "absolute",
+            bottom: 24,
+            right: 24,
+            width: 60,
+            height: 36,
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+          }}
+        />
       </div>
 
       {/* Quick action card overlays */}
@@ -104,10 +161,9 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         className="absolute"
         style={{ left: SIDEBAR_W, right: 0, top: 0, bottom: 0, pointerEvents: "none", zIndex: 10 }}
       >
-        {/* Quick action cards row — three cards side by side */}
         {/* "New Chat" card */}
         <button
-          onClick={() => navigate?.("employeeChat")}
+          onClick={() => handleNav("chat")}
           aria-label="New Chat"
           style={{
             pointerEvents: "all",
@@ -123,7 +179,7 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
         />
         {/* "View History" card */}
         <button
-          onClick={() => navigate?.("history")}
+          onClick={() => handleNav("history")}
           aria-label="View History"
           style={{
             pointerEvents: "all",
@@ -137,9 +193,9 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
             border: "none",
           }}
         />
-        {/* "View Guide" card — no navigation target, just visual */}
+        {/* "View Guide" card */}
         <button
-          onClick={() => {}}
+          onClick={() => handleNav("chat")}
           aria-label="View Guide"
           style={{
             pointerEvents: "all",
@@ -154,11 +210,11 @@ export default function EmployeeDashboardWrapper({ navigate, userName: _userName
           }}
         />
 
-        {/* Recent conversations: Resume buttons — approximately 3 rows */}
+        {/* Recent conversations: Resume buttons */}
         {[0, 1, 2].map((i) => (
           <button
             key={i}
-            onClick={() => navigate?.("employeeChat")}
+            onClick={() => handleNav("chat")}
             aria-label="Resume conversation"
             style={{
               pointerEvents: "all",

@@ -1,70 +1,129 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { chatService } from "../services/chatService";
+import { getErrorMessage } from "../services/api";
+import { MAX_QUESTION_LENGTH } from "../utils/validators";
+import type { ChatMessage } from "../types";
 import AiChatbot from "@/imports/05AiChatbot/index";
 import EmployeeDashboard from "@/imports/04EmployeeDashboard/index";
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  sources?: { title: string; page: number; snippet: string }[];
-}
-
-const AI_RESPONSES: { content: string; sources: { title: string; page: number; snippet: string }[] }[] = [
-  {
-    content: "Based on the Security Policy v2.3, all employees must enable multi-factor authentication (MFA) within 30 days of account creation. The policy mandates the use of authenticator apps rather than SMS-based OTPs for enhanced security.",
-    sources: [{ title: "Security Policy v2.3", page: 14, snippet: "Multi-factor authentication must be enabled within 30 days of account creation..." }],
-  },
-  {
-    content: "According to the HR Handbook Q4 2024, full-time employees are entitled to 25 days of annual leave per calendar year, accruing at 2.08 days per month. Leave must be approved by your line manager at least 2 weeks in advance for periods exceeding 5 consecutive days.",
-    sources: [{ title: "HR Handbook Q4 2024", page: 31, snippet: "Annual leave entitlement: 25 days per calendar year for full-time employees..." }],
-  },
-  {
-    content: "The Expense Reimbursement Policy requires original receipts for all claims above £25. Expenses must be submitted within 30 days of the transaction. Reimbursement is processed in the next payroll cycle following manager approval.",
-    sources: [{ title: "Finance Policy 2024", page: 8, snippet: "Receipts required for all expenses exceeding £25. Submit within 30 days..." }],
-  },
-  {
-    content: "Per the IT Asset Management Policy, all software must appear in the approved software catalog before installation on corporate devices. Unauthorized software installations are subject to disciplinary action under the Code of Conduct.",
-    sources: [{ title: "IT Policy Manual", page: 22, snippet: "Only approved software from the organizational catalog may be installed on corporate devices..." }],
-  },
-  {
-    content: "The Onboarding Guide specifies that new employees must complete: (1) IT security training in week 1, (2) compliance and ethics training in week 2, (3) role-specific training within 30 days, and a 30-day check-in with their line manager.",
-    sources: [{ title: "Onboarding Guide v3", page: 3, snippet: "New hire training schedule — IT security, compliance, and role-specific modules required within first month..." }],
-  },
-];
-
-let aiIdx = 0;
-
 // variant="admin" uses AiChatbot import (admin sidebar) and preserves the Figma topbar (overlay starts at 64px).
 // variant="employee" uses EmployeeDashboard import (employee sidebar) and includes its own topbar (overlay starts at 0).
-export default function ChatWrapper({ variant = "admin", userName }: { variant?: "admin" | "employee"; userName?: string }) {
+export default function ChatWrapper({
+  variant: propVariant,
+  userName: propUserName,
+}: {
+  variant?: "admin" | "employee";
+  userName?: string;
+}) {
+  const { user, isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
+  const variant = propVariant ?? (isAdmin ? "admin" : "employee");
+  const userName = propUserName ?? user?.name;
   const BaseImport = variant === "employee" ? EmployeeDashboard : AiChatbot;
   const overlayTop = variant === "employee" ? 0 : 64;
-  const [messages, setMessages] = useState<Message[]>([]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlConvId = searchParams.get("conversation");
+
+  const [conversationId, setConversationId] = useState<string | undefined>(
+    urlConvId ?? undefined
+  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [failedQuestion, setFailedQuestion] = useState<string | null>(null);
+  const [collapsedSources, setCollapsedSources] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Resume thread when /chat?conversation=<id> is provided
+  useEffect(() => {
+    if (urlConvId) {
+      setConversationId(urlConvId);
+      chatService
+        .getHistory()
+        .then((history) => {
+          const found = history.find((c) => c.id === urlConvId);
+          if (found && found.messages) {
+            setMessages(found.messages);
+          }
+        })
+        .catch((err) => {
+          setError(getErrorMessage(err));
+        });
+    } else {
+      setConversationId(undefined);
+      setMessages([]);
+    }
+  }, [urlConvId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || typing) return;
-    setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+  const send = useCallback(
+    async (overrideText?: string) => {
+      const text = (overrideText ?? input).trim();
+      if (!text || typing) return;
 
-    const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
+      if (text.length > MAX_QUESTION_LENGTH) {
+        setError(`Question exceeds maximum length of ${MAX_QUESTION_LENGTH} characters.`);
+        return;
+      }
+
+      setError(null);
+      setFailedQuestion(null);
+
+      if (!overrideText) {
+        setInput("");
+        if (textareaRef.current) textareaRef.current.style.height = "auto";
+      }
+
+      const userMsg: ChatMessage = {
+        id: `u-${Date.now()}`,
+        role: "user",
+        content: text,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, userMsg]);
+      setTyping(true);
+
+      try {
+        const reply = await chatService.ask(text, conversationId);
+        setConversationId(reply.conversationId);
+        setMessages((prev) => [...prev, reply.message]);
+      } catch (err) {
+        setError(getErrorMessage(err));
+        setFailedQuestion(text);
+      } finally {
+        setTyping(false);
+      }
+    },
+    [input, typing, conversationId]
+  );
+
+  const handleRetry = async () => {
+    if (!failedQuestion || typing) return;
+    const textToRetry = failedQuestion;
+    setError(null);
     setTyping(true);
 
-    await new Promise((r) => setTimeout(r, 1000 + Math.random() * 800));
-
-    const resp = AI_RESPONSES[aiIdx % AI_RESPONSES.length];
-    aiIdx++;
-    setMessages((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", ...resp }]);
-    setTyping(false);
+    try {
+      const reply = await chatService.ask(textToRetry, conversationId);
+      setConversationId(reply.conversationId);
+      setMessages((prev) => [...prev, reply.message]);
+      setFailedQuestion(null);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setTyping(false);
+    }
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -80,10 +139,191 @@ export default function ChatWrapper({ variant = "admin", userName }: { variant?:
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
   };
 
+  const toggleSources = (msgId: string) => {
+    setCollapsedSources((prev) => ({
+      ...prev,
+      [msgId]: !prev[msgId],
+    }));
+  };
+
+  const handleCopy = async (content: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = content;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
+
+  const resetChat = () => {
+    setConversationId(undefined);
+    setMessages([]);
+    setSearchParams({});
+    setInput("");
+    setError(null);
+  };
+
   return (
     <div className="size-full relative">
       {/* Static import provides sidebar chrome; admin uses AiChatbot, employee uses EmployeeDashboard */}
       <BaseImport />
+
+      {/* Sidebar navigation overlay */}
+      <div
+        className="absolute inset-y-0 left-0"
+        style={{ width: 280, pointerEvents: "none", zIndex: 10 }}
+      >
+        {/* Brand / Logo -> Dashboard */}
+        <button
+          onClick={() => navigate("/dashboard")}
+          aria-label="Dashboard"
+          style={{
+            pointerEvents: "all",
+            position: "absolute",
+            top: 24,
+            left: 24,
+            width: 160,
+            height: 40,
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+          }}
+        />
+
+        {/* New Conversation button */}
+        <button
+          onClick={resetChat}
+          aria-label="New Conversation"
+          style={{
+            pointerEvents: "all",
+            position: "absolute",
+            top: 96,
+            left: 24,
+            right: 24,
+            height: 44,
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+          }}
+        />
+
+        {/* Chat nav */}
+        <button
+          onClick={resetChat}
+          aria-label="Chat"
+          style={{
+            pointerEvents: "all",
+            position: "absolute",
+            top: 172 + (44 + 4) * 0,
+            left: 24,
+            right: 24,
+            height: 44,
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+          }}
+        />
+
+        {/* History nav (or Dashboard for admin) */}
+        <button
+          onClick={() => navigate(isAdmin ? "/dashboard" : "/history")}
+          aria-label={isAdmin ? "Dashboard" : "History"}
+          style={{
+            pointerEvents: "all",
+            position: "absolute",
+            top: 172 + (44 + 4) * 1,
+            left: 24,
+            right: 24,
+            height: 44,
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+          }}
+        />
+
+        {/* Settings nav (or Documents for admin) */}
+        <button
+          onClick={() => navigate(isAdmin ? "/documents" : "/settings")}
+          aria-label={isAdmin ? "Documents" : "Settings"}
+          style={{
+            pointerEvents: "all",
+            position: "absolute",
+            top: 172 + (44 + 4) * 2,
+            left: 24,
+            right: 24,
+            height: 44,
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+          }}
+        />
+
+        {isAdmin && (
+          <>
+            {/* Users nav */}
+            <button
+              onClick={() => navigate("/users")}
+              aria-label="Users"
+              style={{
+                pointerEvents: "all",
+                position: "absolute",
+                top: 172 + (44 + 4) * 3,
+                left: 24,
+                right: 24,
+                height: 44,
+                cursor: "pointer",
+                background: "transparent",
+                border: "none",
+              }}
+            />
+            {/* Settings nav for admin */}
+            <button
+              onClick={() => navigate("/settings")}
+              aria-label="Settings"
+              style={{
+                pointerEvents: "all",
+                position: "absolute",
+                top: 172 + (44 + 4) * 4,
+                left: 24,
+                right: 24,
+                height: 44,
+                cursor: "pointer",
+                background: "transparent",
+                border: "none",
+              }}
+            />
+          </>
+        )}
+
+        {/* Logout button at bottom of sidebar */}
+        <button
+          onClick={() => {
+            logout();
+            navigate("/login");
+          }}
+          aria-label="Logout"
+          title="Logout"
+          style={{
+            pointerEvents: "all",
+            position: "absolute",
+            bottom: 24,
+            right: 24,
+            width: 60,
+            height: 36,
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+          }}
+        />
+      </div>
 
       {/* Interactive overlay: for admin starts below topbar (64px), for employee covers full right side */}
       <div
@@ -99,6 +339,7 @@ export default function ChatWrapper({ variant = "admin", userName }: { variant?:
             </div>
           </div>
         )}
+
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto px-[32px] py-[24px] flex flex-col gap-[16px]">
           {messages.length === 0 && (
@@ -115,7 +356,9 @@ export default function ChatWrapper({ variant = "admin", userName }: { variant?:
                 </svg>
               </div>
               <div className="flex flex-col gap-[6px]">
-                <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[22px]">{userName ? `Hello, ${userName.split(" ")[0]}! Ask anything about your documents` : "Ask anything about your documents"}</p>
+                <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[22px]">
+                  {userName ? `Hello, ${userName.split(" ")[0]}! Ask anything about your documents` : "Ask anything about your documents"}
+                </p>
                 <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[14px] max-w-[400px] leading-[1.6]">
                   Your question will be answered with source references from your knowledge base.
                 </p>
@@ -124,7 +367,11 @@ export default function ChatWrapper({ variant = "admin", userName }: { variant?:
                 {["What is the MFA policy?", "How many annual leave days?", "Expense reimbursement rules?"].map((q) => (
                   <button
                     key={q}
-                    onClick={() => { setInput(q); textareaRef.current?.focus(); }}
+                    type="button"
+                    onClick={() => {
+                      setInput(q);
+                      textareaRef.current?.focus();
+                    }}
                     className="bg-white border border-[#e2e8f0] rounded-[8px] px-[12px] py-[8px] font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#475569] text-[13px] hover:border-[#4f46e5] hover:text-[#4f46e5] transition-colors cursor-pointer"
                   >
                     {q}
@@ -160,32 +407,87 @@ export default function ChatWrapper({ variant = "admin", userName }: { variant?:
                   </p>
                 </div>
 
+                {/* Assistant Copy Answer Button */}
+                {msg.role === "assistant" && (
+                  <div className="flex items-center gap-[6px]">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(msg.content, msg.id)}
+                      className="inline-flex items-center gap-[4px] text-[11px] font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#94a3b8] hover:text-[#4f46e5] transition-colors bg-transparent border-none p-0 cursor-pointer"
+                      title="Copy answer"
+                    >
+                      {copiedId === msg.id ? (
+                        <>
+                          <svg className="size-[13px] text-[#16a34a]" fill="none" viewBox="0 0 20 20">
+                            <path d="M4 10l4 4L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <span className="text-[#16a34a]">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="size-[13px]" fill="none" viewBox="0 0 20 20">
+                            <rect x="6" y="6" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                            <path d="M4 12V4a2 2 0 012-2h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                          <span>Copy answer</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Collapsible sources: only render if sources exist and are non-empty */}
                 {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
                   <div className="flex flex-col gap-[6px]">
-                    {msg.sources.map((src, i) => (
-                      <div
-                        key={i}
-                        className="bg-[#eef2ff] border border-[#c7d2fe] rounded-[8px] px-[12px] py-[10px] flex items-start gap-[8px]"
+                    <button
+                      type="button"
+                      onClick={() => toggleSources(msg.id)}
+                      className="inline-flex items-center gap-[6px] text-[12px] font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#4f46e5] hover:text-[#4338ca] transition-colors cursor-pointer w-fit bg-transparent border-none p-0"
+                    >
+                      <svg
+                        className={`size-[13px] transition-transform duration-200 ${
+                          collapsedSources[msg.id] ? "-rotate-90" : "rotate-0"
+                        }`}
+                        fill="none"
+                        viewBox="0 0 20 20"
                       >
-                        <svg className="size-[14px] shrink-0 mt-[1px]" fill="none" viewBox="0 0 20 20">
-                          <path d="M7 4H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2h-2M7 4a2 2 0 012-2h2a2 2 0 012 2M7 4h6" stroke="#4f46e5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        <div>
-                          <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#4f46e5] text-[12px]">
-                            {src.title} · Page {src.page}
-                          </p>
-                          <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#475569] text-[11px] leading-[1.5] mt-[2px]">
-                            "{src.snippet}"
-                          </p>
-                        </div>
+                        <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>
+                        {msg.sources.length} {msg.sources.length === 1 ? "source reference" : "source references"}
+                      </span>
+                    </button>
+
+                    {!collapsedSources[msg.id] && (
+                      <div className="flex flex-col gap-[6px]">
+                        {msg.sources.map((src, i) => (
+                          <div
+                            key={i}
+                            className="bg-[#eef2ff] border border-[#c7d2fe] rounded-[8px] px-[12px] py-[10px] flex items-start gap-[8px]"
+                          >
+                            <svg className="size-[14px] shrink-0 mt-[1px]" fill="none" viewBox="0 0 20 20">
+                              <path d="M7 4H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2h-2M7 4a2 2 0 012-2h2a2 2 0 012 2M7 4h6" stroke="#4f46e5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <div>
+                              <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#4f46e5] text-[12px]">
+                                {src.documentName}
+                                {src.page != null ? ` · Page ${src.page}` : ""}
+                              </p>
+                              <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#475569] text-[11px] leading-[1.5] mt-[2px]">
+                                "{src.snippet}"
+                              </p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </div>
             </div>
           ))}
 
+          {/* Typing Indicator */}
           {typing && (
             <div className="flex gap-[12px] justify-start">
               <div className="bg-[#4f46e5] rounded-full size-[32px] shrink-0 flex items-center justify-center">
@@ -205,6 +507,28 @@ export default function ChatWrapper({ variant = "admin", userName }: { variant?:
             </div>
           )}
 
+          {/* Inline Error Message with Retry */}
+          {error && (
+            <div className="bg-[#fef2f2] border border-[#fecaca] rounded-[10px] px-[16px] py-[12px] flex items-center justify-between gap-[12px] text-[#dc2626]">
+              <div className="flex items-center gap-[8px] text-[13px] font-['Plus_Jakarta_Sans:Medium',sans-serif]">
+                <svg className="size-[16px] shrink-0" fill="none" viewBox="0 0 20 20">
+                  <path d="M10 9v4m0 3h.01M10 2a8 8 0 100 16 8 8 0 000-16z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span>{error}</span>
+              </div>
+              {failedQuestion && (
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  disabled={typing}
+                  className="px-[12px] py-[4px] bg-[#dc2626] text-white rounded-[6px] text-[12px] font-['Plus_Jakarta_Sans:Medium',sans-serif] hover:bg-[#b91c1c] transition-colors border-none cursor-pointer disabled:opacity-50"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
+
           <div ref={bottomRef} />
         </div>
 
@@ -218,22 +542,35 @@ export default function ChatWrapper({ variant = "admin", userName }: { variant?:
               onKeyDown={handleKey}
               placeholder="Ask about your enterprise documents..."
               rows={1}
+              maxLength={MAX_QUESTION_LENGTH}
               className="flex-1 resize-none bg-transparent outline-none font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#1e293b] text-[14px] placeholder:text-[#94a3b8] leading-[1.6] overflow-hidden"
               style={{ maxHeight: 120 }}
             />
             <button
-              onClick={send}
-              disabled={!input.trim() || typing}
+              onClick={() => send()}
+              disabled={!input.trim() || input.trim().length > MAX_QUESTION_LENGTH || typing}
               className="bg-[#4f46e5] rounded-full size-[40px] shrink-0 flex items-center justify-center hover:bg-[#4338ca] active:bg-[#3730a3] transition-colors disabled:opacity-40 cursor-pointer border-none mb-[1px]"
+              title="Send question"
             >
               <svg className="size-[18px]" fill="none" viewBox="0 0 20 20">
                 <path d="M3 10l14-7-7 14V10H3z" fill="white" />
               </svg>
             </button>
           </div>
-          <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[11px] text-center mt-[8px]">
-            Responses grounded in your organization&apos;s document library
-          </p>
+          <div className="flex items-center justify-between mt-[8px] px-[4px]">
+            <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[11px]">
+              Responses grounded in your organization&apos;s document library
+            </p>
+            {input.length > 800 && (
+              <span
+                className={`font-['Plus_Jakarta_Sans:Medium',sans-serif] text-[11px] ${
+                  input.length > MAX_QUESTION_LENGTH ? "text-red-500" : "text-[#94a3b8]"
+                }`}
+              >
+                {input.length}/{MAX_QUESTION_LENGTH}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

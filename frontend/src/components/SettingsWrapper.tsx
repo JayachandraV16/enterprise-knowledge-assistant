@@ -4,7 +4,6 @@ import { useAuth } from "@/context/AuthContext";
 import { authService } from "@/services/authService";
 import { getErrorMessage } from "@/services/api";
 import svgPaths from "@/imports/04EmployeeDashboard/svg-0eglxyxvnv";
-import imgFrame from "@/imports/04EmployeeDashboard/b8581a3a8f9a19b6eec05845c18e07081f487330.png";
 
 interface Props {
   navigate?: (page: string) => void;
@@ -27,12 +26,12 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-[#e2e8f0] rounded-[12px] overflow-hidden">
+    <div className="w-full bg-white border border-[#e2e8f0] rounded-[16px] overflow-hidden shrink-0 shadow-xs">
       <div className="px-[24px] py-[20px] border-b border-[#f1f5f9]">
-        <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[16px]">{title}</p>
+        <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[18px] tracking-[-0.14px]">{title}</p>
         {subtitle && <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px] mt-[2px]">{subtitle}</p>}
       </div>
-      <div className="px-[24px] py-[20px] flex flex-col gap-[16px]">{children}</div>
+      <div className="px-[24px] py-[24px] flex flex-col gap-[20px]">{children}</div>
     </div>
   );
 }
@@ -61,7 +60,7 @@ function Field({
   readOnly?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-[6px]">
+    <div className="flex flex-col gap-[6px] w-full">
       <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">{label}</p>
       <div className={`border rounded-[8px] flex items-center px-[12px] py-[10px] gap-[10px] transition-colors ${readOnly ? "bg-[#f1f5f9] border-[#e2e8f0]" : "bg-[#f8fafc] border-[#e2e8f0] focus-within:border-[#4f46e5]"}`}>
         <input
@@ -70,7 +69,7 @@ function Field({
           onChange={(e) => !readOnly && onChange(e.target.value)}
           placeholder={placeholder}
           readOnly={readOnly}
-          className="flex-1 bg-transparent outline-none font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#1e293b] text-[14px] placeholder:text-[#94a3b8]"
+          className="flex-1 min-w-0 bg-transparent outline-none font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#1e293b] text-[14px] placeholder:text-[#94a3b8]"
         />
         {showToggle && onToggle && (
           <button type="button" onClick={onToggle} className="shrink-0 border-none bg-transparent p-0 cursor-pointer text-[#94a3b8] hover:text-[#475569]">
@@ -152,8 +151,8 @@ function AdminSidebar({ navigate, activePage }: { navigate?: (p: string) => void
       </div>
       <div className="px-[24px] pb-[24px] pt-[20px] border-t border-[#e2e8f0] flex gap-[12px] items-center justify-between">
         <div className="flex gap-[12px] items-center min-w-0">
-          <div className="relative size-[40px] shrink-0">
-            <img alt="User avatar" className="rounded-full size-full object-cover" src={imgFrame} />
+          <div className="relative size-[40px] rounded-full bg-[#eef2ff] border border-[#c7d2fe] flex items-center justify-center shrink-0 text-[#4f46e5] font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[16px]">
+            {user?.name ? user.name.charAt(0).toUpperCase() : "A"}
             <div className="absolute bottom-0 right-0 size-[10px] bg-[#22c55e] rounded-full border-[1.5px] border-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -223,8 +222,8 @@ function EmployeeSidebar({ navigate, activePage, userName }: { navigate?: (p: st
       </div>
       <div className="px-[24px] pb-[24px] pt-[20px] border-t border-[#e2e8f0] flex gap-[12px] items-center justify-between">
         <div className="flex gap-[12px] items-center min-w-0">
-          <div className="relative size-[40px] shrink-0">
-            <img alt="User avatar" className="rounded-full size-full object-cover" src={imgFrame} />
+          <div className="relative size-[40px] rounded-full bg-[#eef2ff] border border-[#c7d2fe] flex items-center justify-center shrink-0 text-[#4f46e5] font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[16px]">
+            {(userName || user?.name || "E").charAt(0).toUpperCase()}
             <div className="absolute bottom-0 right-0 size-[10px] bg-[#22c55e] rounded-full border-[1.5px] border-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -358,24 +357,49 @@ export default function SettingsWrapper({ navigate: navProp, role: roleProp }: P
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-[32px] py-[28px] flex flex-col gap-[20px]">
+        <div className="flex-1 min-h-0 overflow-y-auto px-[32px] py-[28px] flex flex-col gap-[24px] pb-[60px]">
           {/* Profile: show the logged-in user from useAuth() read-only (name, email, role) */}
           <Card title="Profile" subtitle="Your organization account details">
-            <Field label="Full Name" value={user?.name ?? ""} onChange={() => {}} readOnly />
-            <Field label="Email Address" value={user?.email ?? ""} onChange={() => {}} readOnly hint="Email address is managed by your organization" />
-            <Field label="Account Role" value={user?.role === "ADMIN" ? "Administrator" : "Employee"} onChange={() => {}} readOnly />
+            <div className="flex items-center gap-[16px] pb-[4px]">
+              <div className="relative size-[52px] rounded-full bg-[#eef2ff] border border-[#c7d2fe] flex items-center justify-center shrink-0 text-[#4f46e5] font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[20px]">
+                {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
+                <div className="absolute bottom-0 right-0 size-[12px] bg-[#22c55e] rounded-full border-[2px] border-white" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[16px] truncate">
+                  {user?.name || "Enterprise User"}
+                </p>
+                <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#64748b] text-[13px] truncate">
+                  {user?.email || "user@enterprise.com"} • <span className="font-semibold text-[#4f46e5]">{user?.role === "ADMIN" ? "Administrator" : "Employee"}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px] pt-[8px] border-t border-[#f1f5f9]">
+              <Field label="Full Name" value={user?.name ?? ""} onChange={() => {}} readOnly />
+              <Field label="Email Address" value={user?.email ?? ""} onChange={() => {}} readOnly hint="Managed by your organization" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
+              <Field label="Account Role" value={user?.role === "ADMIN" ? "Administrator" : "Employee"} onChange={() => {}} readOnly />
+            </div>
           </Card>
 
           {/* AI Model: read-only text with note "Models run locally via Ollama". No editable config, no API keys */}
           <Card title="AI Model" subtitle="Offline local inference architecture">
-            <div className="flex flex-col gap-[6px]">
+            <div className="flex flex-col gap-[8px]">
               <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">Active Model</p>
-              <div className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-[8px] px-[12px] py-[10px]">
-                <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#1e293b] text-[14px]">
-                  Local Offline Model (Ollama)
-                </p>
+              <div className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-[8px] px-[14px] py-[12px] flex items-center justify-between">
+                <div className="flex items-center gap-[10px]">
+                  <span className="size-[10px] rounded-full bg-[#22c55e] shrink-0" />
+                  <span className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#1e293b] text-[14px]">
+                    Local Offline Model (Ollama)
+                  </span>
+                </div>
+                <span className="text-[12px] font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold bg-[#eef2ff] text-[#4f46e5] px-[10px] py-[4px] rounded-full">
+                  Self-Hosted
+                </span>
               </div>
-              <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[12px]">
+              <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px]">
                 Models run locally via Ollama. No external API keys or cloud connections are used.
               </p>
             </div>
@@ -383,41 +407,43 @@ export default function SettingsWrapper({ navigate: navProp, role: roleProp }: P
 
           {/* Password change: current, new, confirm with validation, loading, error text and success toast */}
           <Card title="Security" subtitle="Change your account password">
-            <form onSubmit={handlePasswordChange} className="flex flex-col gap-[16px]">
-              <Field
-                label="Current Password"
-                type="password"
-                value={currentPw}
-                onChange={setCurrentPw}
-                placeholder="••••••••"
-                showToggle
-                showValue={showCurrent}
-                onToggle={() => setShowCurrent(!showCurrent)}
-              />
-              <Field
-                label="New Password"
-                type="password"
-                value={newPw}
-                onChange={setNewPw}
-                placeholder="••••••••"
-                hint="Minimum 8 characters"
-                showToggle
-                showValue={showNew}
-                onToggle={() => setShowNew(!showNew)}
-              />
-              <Field
-                label="Confirm New Password"
-                type="password"
-                value={confirmPw}
-                onChange={setConfirmPw}
-                placeholder="••••••••"
-                showToggle
-                showValue={showConfirm}
-                onToggle={() => setShowConfirm(!showConfirm)}
-              />
+            <form onSubmit={handlePasswordChange} className="flex flex-col gap-[20px]">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px]">
+                <Field
+                  label="Current Password"
+                  type="password"
+                  value={currentPw}
+                  onChange={setCurrentPw}
+                  placeholder="••••••••"
+                  showToggle
+                  showValue={showCurrent}
+                  onToggle={() => setShowCurrent(!showCurrent)}
+                />
+                <Field
+                  label="New Password"
+                  type="password"
+                  value={newPw}
+                  onChange={setNewPw}
+                  placeholder="••••••••"
+                  hint="Minimum 8 characters"
+                  showToggle
+                  showValue={showNew}
+                  onToggle={() => setShowNew(!showNew)}
+                />
+                <Field
+                  label="Confirm New Password"
+                  type="password"
+                  value={confirmPw}
+                  onChange={setConfirmPw}
+                  placeholder="••••••••"
+                  showToggle
+                  showValue={showConfirm}
+                  onToggle={() => setShowConfirm(!showConfirm)}
+                />
+              </div>
 
               {pwError && (
-                <div className="bg-[#fef2f2] border border-[#fecaca] text-[#dc2626] rounded-[8px] p-[10px] text-[13px] flex items-center gap-[8px]">
+                <div className="bg-[#fef2f2] border border-[#fecaca] text-[#dc2626] rounded-[8px] p-[12px] text-[13px] flex items-center gap-[8px]">
                   <svg className="size-[16px] shrink-0" fill="none" viewBox="0 0 20 20">
                     <path d="M10 9v4m0 3h.01M10 2a8 8 0 100 16 8 8 0 000-16z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
@@ -429,7 +455,7 @@ export default function SettingsWrapper({ navigate: navProp, role: roleProp }: P
                 <button
                   type="submit"
                   disabled={pwLoading}
-                  className="bg-[#4f46e5] text-white font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[14px] px-[16px] py-[10px] rounded-[8px] hover:bg-[#4338ca] transition-colors border-none cursor-pointer disabled:opacity-50"
+                  className="bg-[#4f46e5] text-white font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[14px] px-[18px] py-[10px] rounded-[8px] hover:bg-[#4338ca] transition-colors border-none cursor-pointer disabled:opacity-50"
                 >
                   {pwLoading ? "Updating Password..." : "Update Password"}
                 </button>
@@ -444,20 +470,22 @@ export default function SettingsWrapper({ navigate: navProp, role: roleProp }: P
 
           {/* Preferences: theme toggle really switches dark mode on <html>; notifications toggle stays UI-only */}
           <Card title="Preferences" subtitle="Display and notification options">
-            <div className="flex items-center justify-between gap-[16px]">
-              <div>
-                <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">Dark Mode</p>
-                <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px] mt-[1px]">Switch between light and dark visual themes</p>
+            <div className="flex flex-col gap-[20px]">
+              <div className="flex items-center justify-between gap-[16px]">
+                <div>
+                  <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">Dark Mode</p>
+                  <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px] mt-[1px]">Switch between light and dark visual themes</p>
+                </div>
+                <Toggle value={darkMode} onChange={handleThemeToggle} />
               </div>
-              <Toggle value={darkMode} onChange={handleThemeToggle} />
-            </div>
 
-            <div className="flex items-center justify-between gap-[16px]">
-              <div>
-                <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">Email Notifications</p>
-                <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px] mt-[1px]">Receive email notifications for internal updates</p>
+              <div className="border-t border-[#f1f5f9] pt-[16px] flex items-center justify-between gap-[16px]">
+                <div>
+                  <p className="font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold text-[#1e293b] text-[14px]">Email Notifications</p>
+                  <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px] mt-[1px]">Receive email notifications for internal updates</p>
+                </div>
+                <Toggle value={emailNotifs} onChange={setEmailNotifs} />
               </div>
-              <Toggle value={emailNotifs} onChange={setEmailNotifs} />
             </div>
           </Card>
         </div>

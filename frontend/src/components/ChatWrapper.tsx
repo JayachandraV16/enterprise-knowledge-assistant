@@ -7,7 +7,7 @@ import { MAX_QUESTION_LENGTH } from "../utils/validators";
 import type { ChatMessage } from "../types";
 import AiChatbot from "@/imports/05AiChatbot/index";
 import EmployeeDashboard from "@/imports/04EmployeeDashboard/index";
-
+import { documentService } from "../services/documentService";
 // variant="admin" uses AiChatbot import (admin sidebar) and preserves the Figma topbar (overlay starts at 64px).
 // variant="employee" uses EmployeeDashboard import (employee sidebar) and includes its own topbar (overlay starts at 0).
 export default function ChatWrapper({
@@ -40,7 +40,10 @@ export default function ChatWrapper({
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("");
   // Resume thread when /chat?conversation=<id> is provided
   useEffect(() => {
     if (urlConvId) {
@@ -107,7 +110,32 @@ export default function ChatWrapper({
     },
     [input, typing, conversationId]
   );
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
 
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setUploadStatus("Please select a PDF file.");
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+    setUploadStatus("");
+
+    try {
+      await documentService.upload(file, setUploadProgress);
+      setUploadStatus(`Uploaded successfully: ${file.name}`);
+    } catch (err) {
+      setUploadStatus(`Upload failed: ${getErrorMessage(err)}`);
+    } finally {
+      setUploading(false);
+    }
+  };
   const handleRetry = async () => {
     if (!failedQuestion || typing) return;
     const textToRetry = failedQuestion;
@@ -535,6 +563,22 @@ export default function ChatWrapper({
         {/* Input bar */}
         <div className="bg-white border-t border-[#e2e8f0] px-[24px] py-[20px] shrink-0">
           <div className="bg-[#f8fafc] border border-[#cbd5e1] rounded-[12px] flex items-end gap-[12px] px-[16px] py-[10px] focus-within:border-[#4f46e5] transition-colors">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="shrink-0 rounded-lg border border-[#cbd5e1] px-3 py-2 text-sm text-[#475569] hover:border-[#4f46e5] disabled:opacity-50"
+            >
+              {uploading ? "Uploading..." : "Attach PDF"}
+            </button>
             <textarea
               ref={textareaRef}
               value={input}
@@ -557,6 +601,19 @@ export default function ChatWrapper({
               </svg>
             </button>
           </div>
+          {(uploading || uploadStatus) && (
+            <p
+              className={`mb-2 text-xs ${
+                uploadStatus.startsWith("Upload failed")
+                  ? "text-red-600"
+                  : "text-[#4f46e5]"
+              }`}
+            >
+              {uploading
+                ? `Uploading PDF... ${uploadProgress}%`
+                : uploadStatus}
+            </p>
+          )}
           <div className="flex items-center justify-between mt-[8px] px-[4px]">
             <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[11px]">
               Responses grounded in your organization&apos;s document library

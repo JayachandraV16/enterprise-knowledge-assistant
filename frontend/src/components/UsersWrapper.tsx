@@ -191,7 +191,7 @@ export default function UsersWrapper({ navigate: propNavigate }: { navigate?: (p
       {/* Admin Sidebar Navigation Overlay */}
       <div
         className="absolute inset-y-0 left-0"
-        style={{ width: 280, pointerEvents: "none", zIndex: 10 }}
+        style={{ display: "none" }}
       >
         {/* Brand / Logo -> Dashboard */}
         <button

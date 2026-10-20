@@ -7,15 +7,54 @@ export const INITIAL_MOCK_DOCS: KnowledgeDocument[] = [
   { id: 'd2', fileName: 'HR_Handbook.docx', fileType: 'DOCX', sizeBytes: 1_100_000, pageCount: 40, uploadedAt: '2026-08-02T09:30:00Z', status: 'PROCESSED' },
 ];
 
-let mockDocs: KnowledgeDocument[] = [...INITIAL_MOCK_DOCS];
+const STORAGE_KEY = 'mock_documents';
+
+function loadDocs(): KnowledgeDocument[] {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return JSON.parse(JSON.stringify(INITIAL_MOCK_DOCS));
+}
+
+function saveDocs(docs: KnowledgeDocument[]): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+    }
+  } catch {
+    // ignore
+  }
+}
+
+let mockDocs: KnowledgeDocument[] = loadDocs();
 
 export function _resetMockDocs(): void {
   mockDocs = JSON.parse(JSON.stringify(INITIAL_MOCK_DOCS));
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    // ignore
+  }
 }
 
 export const documentService = {
   async list(): Promise<KnowledgeDocument[]> {
-    if (USE_MOCK) { await delay(300); return [...mockDocs]; }
+    if (USE_MOCK) {
+      await delay(300);
+      return [...mockDocs];
+    }
     const { data } = await api.get<unknown>('/api/documents');
     return unwrapList(data).map(toDocument);
   },
@@ -23,16 +62,30 @@ export const documentService = {
   // Admin only (SRS 2.3). Backend + AI service then parse, chunk, embed (SRS 3.2).
   async upload(file: File, onProgress?: (percent: number) => void): Promise<KnowledgeDocument> {
     if (USE_MOCK) {
-      for (let p = 0; p <= 100; p += 25) { onProgress?.(p); await delay(150); }
+      for (let p = 0; p <= 100; p += 25) {
+        onProgress?.(p);
+        await delay(150);
+      }
       const ext = (file.name.split('.').pop() ?? '').toUpperCase() as DocumentType;
       const doc: KnowledgeDocument = {
-        id: `d${Date.now()}`, fileName: file.name, fileType: ext, sizeBytes: file.size,
-        uploadedAt: new Date().toISOString(), status: 'PROCESSING',
+        id: `d${Date.now()}`,
+        fileName: file.name,
+        fileType: ext,
+        sizeBytes: file.size,
+        uploadedAt: new Date().toISOString(),
+        status: 'PROCESSING',
       };
       mockDocs = [doc, ...mockDocs];
+      saveDocs(mockDocs);
+
+      // Transition to PROCESSED after 3 seconds and persist
       setTimeout(() => {
-        mockDocs = mockDocs.map((d) => (d.id === doc.id ? { ...d, status: 'PROCESSED', pageCount: 10 } : d));
-      }, 4000);
+        mockDocs = mockDocs.map((d) =>
+          d.id === doc.id ? { ...d, status: 'PROCESSED', pageCount: Math.max(1, Math.round(file.size / 50000)) } : d
+        );
+        saveDocs(mockDocs);
+      }, 3000);
+
       return doc;
     }
     const form = new FormData();
@@ -44,7 +97,12 @@ export const documentService = {
   },
 
   async remove(id: string): Promise<void> {
-    if (USE_MOCK) { await delay(300); mockDocs = mockDocs.filter((d) => d.id !== id); return; }
+    if (USE_MOCK) {
+      await delay(300);
+      mockDocs = mockDocs.filter((d) => d.id !== id);
+      saveDocs(mockDocs);
+      return;
+    }
     await api.delete(`/api/documents/${id}`);
   },
 };

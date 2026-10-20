@@ -1,9 +1,10 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import svgPaths from "@/imports/08AdminDashboard/svg-gz15kh87ts";
+import employeeSvgPaths from "@/imports/04EmployeeDashboard/svg-0eglxyxvnv";
 import imgFrame from "@/imports/08AdminDashboard/b8581a3a8f9a19b6eec05845c18e07081f487330.png";
 
-type ActivePage = "chat" | "dashboard" | "documents" | "users" | "settings" | string;
+type ActivePage = "chat" | "history" | "dashboard" | "documents" | "users" | "settings" | string;
 
 interface Props {
   navigate?: (page: string) => void;
@@ -65,7 +66,7 @@ export default function AdminSidebarOverlay({ navigate: navProp, activePage, use
   return (
     <div
       className="absolute inset-y-0 left-0 bg-white flex flex-col justify-between"
-      style={{ width: 280, zIndex: 8, borderRight: "1px solid #e2e8f0" }}
+      style={{ width: 280, zIndex: 30, borderRight: "1px solid #e2e8f0" }}
     >
       <div className="flex flex-col gap-[32px] p-[24px]">
         {/* Logo — click to go to dashboard */}
@@ -95,6 +96,16 @@ export default function AdminSidebarOverlay({ navigate: navProp, activePage, use
         {/* Nav list */}
         <div className="flex flex-col gap-[4px]">
           <NavItem
+            active={currentActive === "dashboard"}
+            onClick={() => handleNav("dashboard")}
+            label="Dashboard"
+            icon={
+              <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18">
+                <path d={svgPaths.p3cc43580} stroke={currentActive === "dashboard" ? "#4F46E5" : "#475569"} strokeLinecap="round" strokeWidth="2" />
+              </svg>
+            }
+          />
+          <NavItem
             active={currentActive === "chat"}
             onClick={() => handleNav("chat")}
             label="Chat"
@@ -105,12 +116,12 @@ export default function AdminSidebarOverlay({ navigate: navProp, activePage, use
             }
           />
           <NavItem
-            active={currentActive === "dashboard"}
-            onClick={() => handleNav("dashboard")}
-            label="Dashboard"
+            active={currentActive === "history"}
+            onClick={() => handleNav("history")}
+            label="Chat History"
             icon={
               <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18">
-                <path d={svgPaths.p3cc43580} stroke={currentActive === "dashboard" ? "#4F46E5" : "#475569"} strokeLinecap="round" strokeWidth="2" />
+                <path d={employeeSvgPaths.p28c4aac0} stroke={currentActive === "history" ? "#4F46E5" : "#475569"} strokeLinecap="round" strokeWidth="2" />
               </svg>
             }
           />

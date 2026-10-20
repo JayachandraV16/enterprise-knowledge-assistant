@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import svgPaths from "@/imports/04EmployeeDashboard/svg-0eglxyxvnv";
+import adminSvgPaths from "@/imports/08AdminDashboard/svg-gz15kh87ts";
 import imgFrame from "@/imports/04EmployeeDashboard/b8581a3a8f9a19b6eec05845c18e07081f487330.png";
 
 type ActivePage = "employeeChat" | "chat" | "employeeDashboard" | "dashboard" | "history" | "settings" | string;
@@ -67,7 +68,7 @@ export default function EmployeeSidebarOverlay({ navigate: navProp, activePage, 
   return (
     <div
       className="absolute inset-y-0 left-0 bg-white flex flex-col justify-between"
-      style={{ width: 280, zIndex: 8, borderRight: "1px solid #e2e8f0" }}
+      style={{ width: 280, zIndex: 30, borderRight: "1px solid #e2e8f0" }}
     >
       <div className="flex flex-col gap-[32px] p-[24px]">
         {/* Logo — click to go to dashboard */}
@@ -97,19 +98,29 @@ export default function EmployeeSidebarOverlay({ navigate: navProp, activePage, 
         {/* Nav list */}
         <div className="flex flex-col gap-[4px]">
           <NavItem
-            active={currentActive === "employeeChat" || currentActive === "chat" || currentActive === "employeeDashboard" || currentActive === "dashboard"}
+            active={currentActive === "dashboard" || currentActive === "employeeDashboard"}
+            onClick={() => handleNav("dashboard")}
+            label="Dashboard"
+            icon={
+              <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18">
+                <path d={adminSvgPaths.p3cc43580} stroke={currentActive === "dashboard" || currentActive === "employeeDashboard" ? "#4F46E5" : "#475569"} strokeLinecap="round" strokeWidth="2" />
+              </svg>
+            }
+          />
+          <NavItem
+            active={currentActive === "chat" || currentActive === "employeeChat"}
             onClick={() => handleNav("chat")}
             label="Chat"
             icon={
               <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18">
-                <path d={svgPaths.pea36900} stroke={currentActive === "employeeChat" || currentActive === "chat" || currentActive === "employeeDashboard" || currentActive === "dashboard" ? "#4F46E5" : "#475569"} strokeLinecap="round" strokeWidth="2" />
+                <path d={svgPaths.pea36900} stroke={currentActive === "chat" || currentActive === "employeeChat" ? "#4F46E5" : "#475569"} strokeLinecap="round" strokeWidth="2" />
               </svg>
             }
           />
           <NavItem
             active={currentActive === "history"}
             onClick={() => handleNav("history")}
-            label="History"
+            label="Chat History"
             icon={
               <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18">
                 <path d={svgPaths.p28c4aac0} stroke={currentActive === "history" ? "#4F46E5" : "#475569"} strokeLinecap="round" strokeWidth="2" />

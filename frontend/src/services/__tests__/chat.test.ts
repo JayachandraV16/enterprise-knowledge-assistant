@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { chatService, _resetMockHistory } from '../chatService';
 import { MAX_QUESTION_LENGTH } from '../../utils/validators';
 import { toConversationList } from '../adapters';
+import { hasSources } from '../../components/ChatWrapper';
 
 describe('Chat Service & Chat Logic', () => {
   beforeEach(() => {
@@ -108,6 +109,96 @@ describe('Chat Service & Chat Logic', () => {
       expect(first.messages[1].role).toBe('assistant');
       expect(first.messages[1].content).toBe('Core working hours are 9 AM to 5 PM Monday through Friday.');
       expect(first.messages[1].sources).toBeUndefined();
+    });
+  });
+
+  describe('Sources rendering condition (hasSources)', () => {
+    it('returns false when sources is missing or undefined', () => {
+      expect(hasSources({ role: 'assistant' })).toBe(false);
+      expect(hasSources({ role: 'assistant', sources: undefined })).toBe(false);
+    });
+
+    it('returns false when sources is an empty array', () => {
+      expect(hasSources({ role: 'assistant', sources: [] })).toBe(false);
+    });
+
+    it('returns false when message is undefined or null', () => {
+      expect(hasSources(undefined)).toBe(false);
+      expect(hasSources(null)).toBe(false);
+    });
+
+    it('returns false for user messages even if sources is present', () => {
+      expect(hasSources({ role: 'user', sources: [{ documentName: 'doc.pdf', snippet: 'snippet' }] })).toBe(false);
+    });
+
+    it('returns true when assistant message has at least one source item', () => {
+      expect(hasSources({ role: 'assistant', sources: [{ documentName: 'doc.pdf', snippet: 'snippet' }] })).toBe(true);
+      expect(
+        hasSources({
+          role: 'assistant',
+          sources: [
+            { documentName: 'doc1.pdf', snippet: 'a' },
+            { documentName: 'doc2.pdf', snippet: 'b' },
+          ],
+        })
+      ).toBe(true);
+    });
+  });
+
+  describe('Role-based separation (Admin vs Employee)', () => {
+    it('returns separate chat history for admin and employee', async () => {
+      const adminHistory = await chatService.getHistory('admin');
+      const employeeHistory = await chatService.getHistory('employee');
+
+      expect(adminHistory.length).toBeGreaterThanOrEqual(3);
+      expect(employeeHistory.length).toBeGreaterThanOrEqual(3);
+
+      expect(adminHistory[0].id).toBe('c1');
+      expect(employeeHistory[0].id).toBe('emp-c1');
+
+      // IDs should not overlap
+      const adminIds = adminHistory.map((c) => c.id);
+      const employeeIds = employeeHistory.map((c) => c.id);
+      const overlap = adminIds.filter((id) => employeeIds.includes(id));
+      expect(overlap.length).toBe(0);
+    });
+
+    it('adding a message as admin does not affect employee history', async () => {
+      const empBefore = await chatService.getHistory('employee');
+      const adminReply = await chatService.ask('Admin question about compliance', undefined, 'admin');
+
+      const adminAfter = await chatService.getHistory('admin');
+      const empAfter = await chatService.getHistory('employee');
+
+      expect(adminAfter.some((c) => c.id === adminReply.conversationId)).toBe(true);
+      expect(empAfter.some((c) => c.id === adminReply.conversationId)).toBe(false);
+      expect(empAfter.length).toBe(empBefore.length);
+    });
+
+    it('adding a message as employee does not affect admin history', async () => {
+      const adminBefore = await chatService.getHistory('admin');
+      const empReply = await chatService.ask('Employee question about dental', undefined, 'employee');
+
+      const adminAfter = await chatService.getHistory('admin');
+      const empAfter = await chatService.getHistory('employee');
+
+      expect(empAfter.some((c) => c.id === empReply.conversationId)).toBe(true);
+      expect(adminAfter.some((c) => c.id === empReply.conversationId)).toBe(false);
+      expect(adminAfter.length).toBe(adminBefore.length);
+    });
+
+    it('deleting an employee conversation does not delete from admin', async () => {
+      const adminBefore = await chatService.getHistory('admin');
+      const empBefore = await chatService.getHistory('employee');
+      const empIdToDelete = empBefore[0].id;
+
+      await chatService.deleteConversation(empIdToDelete, 'employee');
+
+      const empAfter = await chatService.getHistory('employee');
+      const adminAfter = await chatService.getHistory('admin');
+
+      expect(empAfter.find((c) => c.id === empIdToDelete)).toBeUndefined();
+      expect(adminAfter.length).toBe(adminBefore.length);
     });
   });
 });

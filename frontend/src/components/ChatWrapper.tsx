@@ -8,6 +8,12 @@ import type { ChatMessage } from "../types";
 import AiChatbot from "@/imports/05AiChatbot/index";
 import EmployeeDashboard from "@/imports/04EmployeeDashboard/index";
 import { documentService } from "../services/documentService";
+import svgPaths from "@/imports/05AiChatbot/svg-deu720djhi";
+
+// Helper to ensure sources block is only rendered when sources exist and has at least one item
+export function hasSources(msg?: { role?: string; sources?: unknown[] } | null): boolean {
+  return Boolean(msg && msg.role === "assistant" && Array.isArray(msg.sources) && msg.sources.length > 0);
+}
 // variant="admin" uses AiChatbot import (admin sidebar) and preserves the Figma topbar (overlay starts at 64px).
 // variant="employee" uses EmployeeDashboard import (employee sidebar) and includes its own topbar (overlay starts at 0).
 export default function ChatWrapper({
@@ -22,7 +28,7 @@ export default function ChatWrapper({
   const variant = propVariant ?? (isAdmin ? "admin" : "employee");
   const userName = propUserName ?? user?.name;
   const BaseImport = variant === "employee" ? EmployeeDashboard : AiChatbot;
-  const overlayTop = variant === "employee" ? 0 : 64;
+  const overlayTop = 0;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const urlConvId = searchParams.get("conversation");
@@ -34,6 +40,21 @@ export default function ChatWrapper({
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const handleCopyChat = () => {
+    if (messages.length === 0) {
+      setToast("No messages to copy");
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    const text = messages
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n\n");
+    navigator.clipboard.writeText(text);
+    setToast("Conversation copied to clipboard!");
+    setTimeout(() => setToast(null), 3000);
+  };
   const [failedQuestion, setFailedQuestion] = useState<string | null>(null);
   const [collapsedSources, setCollapsedSources] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -98,7 +119,8 @@ export default function ChatWrapper({
       setTyping(true);
 
       try {
-        const reply = await chatService.ask(text, conversationId);
+        const role = isAdmin ? "admin" : "employee";
+        const reply = await chatService.ask(text, conversationId, role);
         setConversationId(reply.conversationId);
         setMessages((prev) => [...prev, reply.message]);
       } catch (err) {
@@ -143,7 +165,8 @@ export default function ChatWrapper({
     setTyping(true);
 
     try {
-      const reply = await chatService.ask(textToRetry, conversationId);
+      const role = isAdmin ? "admin" : "employee";
+      const reply = await chatService.ask(textToRetry, conversationId, role);
       setConversationId(reply.conversationId);
       setMessages((prev) => [...prev, reply.message]);
       setFailedQuestion(null);
@@ -207,7 +230,7 @@ export default function ChatWrapper({
       {/* Sidebar navigation overlay */}
       <div
         className="absolute inset-y-0 left-0"
-        style={{ width: 280, pointerEvents: "none", zIndex: 10 }}
+        style={{ display: "none" }}
       >
         {/* Brand / Logo -> Dashboard */}
         <button
@@ -358,13 +381,46 @@ export default function ChatWrapper({
         className="absolute flex flex-col bg-[#f8fafc]"
         style={{ left: 280, right: 0, top: overlayTop, bottom: 0, zIndex: 5 }}
       >
-        {/* Employee variant: custom topbar replacing the dashboard topbar */}
-        {variant === "employee" && (
-          <div className="bg-white border-b border-[#e2e8f0] flex items-center justify-between px-[32px] py-[20px] shrink-0">
-            <div className="flex flex-col gap-[2px]">
-              <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[18px] tracking-[-0.18px]">AI Chat</p>
-              <p className="font-['Plus_Jakarta_Sans:Regular',sans-serif] font-normal text-[#94a3b8] text-[13px]">Ask anything about your organization's documents</p>
-            </div>
+        {/* Interactive Topbar for both Admin and Employee */}
+        <div className="bg-white border-b border-[#e2e8f0] flex items-center justify-between px-[32px] py-[16px] shrink-0">
+          <div className="flex flex-col gap-[2px] min-w-0">
+            <p className="font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold text-[#1e293b] text-[18px] tracking-[-0.18px] truncate">
+              {messages.length > 0 ? (messages[0]?.content ? messages[0].content.slice(0, 50) : "AI Knowledge Chat") : "AI Knowledge Chat"}
+            </p>
+            <p className="font-['Plus_Jakarta_Sans:Medium',sans-serif] font-medium text-[#94a3b8] text-[12px] tracking-[-0.06px]">
+              {messages.length > 0 ? `Active conversation • ${messages.length} ${messages.length === 1 ? "message" : "messages"}` : "Ask anything about your organization's documents"}
+            </p>
+          </div>
+
+          {/* Topbar Right Action Buttons */}
+          <div className="flex items-center gap-[12px] shrink-0">
+            <button
+              type="button"
+              onClick={handleCopyChat}
+              title="Copy conversation"
+              aria-label="Copy conversation"
+              className="size-[40px] rounded-full border border-[#cbd5e1] flex items-center justify-center bg-white text-[#475569] hover:bg-[#f8fafc] hover:text-[#4f46e5] hover:border-[#4f46e5] transition-colors cursor-pointer"
+            >
+              <svg className="size-[18px]" fill="none" viewBox="0 0 18 18">
+                <path d={svgPaths.p15634280} fill="currentColor" />
+              </svg>
+            </button>
+
+
+          </div>
+        </div>
+
+        {/* Toast Notification */}
+        {toast && (
+          <div className="absolute top-[72px] right-[32px] z-50 bg-[#1e293b] text-white px-[16px] py-[10px] rounded-[8px] shadow-lg flex items-center gap-[10px] text-[13px] font-['Plus_Jakarta_Sans:Medium',sans-serif]">
+            <span>{toast}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="text-white hover:opacity-80 bg-transparent border-none p-0 cursor-pointer ml-[6px]"
+              title="Close"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -465,7 +521,7 @@ export default function ChatWrapper({
                 )}
 
                 {/* Collapsible sources: only render if sources exist and are non-empty */}
-                {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
+                {hasSources(msg) && (
                   <div className="flex flex-col gap-[6px]">
                     <button
                       type="button"

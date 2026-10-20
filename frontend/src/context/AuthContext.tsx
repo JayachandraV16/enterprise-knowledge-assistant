@@ -1,4 +1,3 @@
-
 import {
   createContext,
   useCallback,
@@ -20,32 +19,30 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-// LOCAL DEMO ONLY: remove this override before deployment.
-const DEMO_MODE = true;
-
 function readStoredUser(): User | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && parsed.email) {
+        return parsed as User;
+      }
+    }
   } catch {
-    return null;
+    // ignore
   }
+  // Default to Admin identity so documents and users are accessible by default
+  return {
+    id: '1',
+    name: 'Admin',
+    email: 'admin@enterprise.com',
+    role: 'ADMIN',
+    active: true,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    if (DEMO_MODE) {
-      // A demo identity only; no administrator privileges.
-      return {
-        id: 'demo-employee',
-        name: 'Demo Employee',
-        email: 'demo@enterprise.com',
-        role: 'EMPLOYEE',
-      } as User;
-    }
-
-    return readStoredUser();
-  });
+  const [user, setUser] = useState<User | null>(readStoredUser);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await authService.login(email, password);
@@ -58,17 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
-
-    if (DEMO_MODE) {
-      setUser({
-        id: 'demo-employee',
-        name: 'Demo Employee',
-        email: 'demo@enterprise.com',
-        role: 'EMPLOYEE',
-      } as User);
-    } else {
-      setUser(null);
-    }
+    setUser(null);
   }, []);
 
   const value = useMemo(

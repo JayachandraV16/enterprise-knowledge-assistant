@@ -51,7 +51,8 @@ export default function ChatHistoryWrapper({
     setLoading(true);
     setError(null);
     try {
-      const data = await chatService.getHistory();
+      const role = isAdmin ? "admin" : "employee";
+      const data = await chatService.getHistory(role);
       setConversations(data);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -99,7 +100,8 @@ export default function ChatHistoryWrapper({
       return;
     }
     try {
-      await chatService.deleteConversation(id);
+      const role = isAdmin ? "admin" : "employee";
+      await chatService.deleteConversation(id, role);
       setConversations((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       setToast(getErrorMessage(err));
@@ -114,7 +116,7 @@ export default function ChatHistoryWrapper({
       {/* Sidebar navigation overlay */}
       <div
         className="absolute inset-y-0 left-0"
-        style={{ width: 280, pointerEvents: "none", zIndex: 10 }}
+        style={{ display: "none" }}
       >
         {/* Brand / Logo -> Dashboard */}
         <button

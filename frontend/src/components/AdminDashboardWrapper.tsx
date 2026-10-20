@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { documentService } from "@/services/documentService";
 import { userService } from "@/services/userService";
+import { chatService } from "@/services/chatService";
 import { getErrorMessage } from "@/services/api";
-import type { KnowledgeDocument, User } from "@/types";
+import type { KnowledgeDocument, User, Conversation } from "@/types";
 import AdminDashboard from "@/imports/08AdminDashboard/index";
 
 export default function AdminDashboardWrapper({ navigate: propNavigate }: { navigate?: (page: string) => void }) {
@@ -14,6 +15,7 @@ export default function AdminDashboardWrapper({ navigate: propNavigate }: { navi
 
   const [docs, setDocs] = useState<KnowledgeDocument[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +64,7 @@ export default function AdminDashboardWrapper({ navigate: propNavigate }: { navi
       {/* Sidebar nav overlay */}
       <div
         className="absolute inset-y-0 left-0"
-        style={{ width: 280, pointerEvents: "none", zIndex: 10 }}
+        style={{ display: "none" }}
       >
         {/* Brand / Logo -> Dashboard */}
         <button

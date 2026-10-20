@@ -35,7 +35,7 @@ export default function EmployeeDashboardWrapper({ navigate: propNavigate, userN
     setLoading(true);
     setError(null);
     try {
-      const data = await chatService.getHistory();
+      const data = await chatService.getHistory("employee");
       setConversations(data);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -76,7 +76,7 @@ export default function EmployeeDashboardWrapper({ navigate: propNavigate, userN
       {/* Sidebar nav overlay */}
       <div
         className="absolute inset-y-0 left-0"
-        style={{ width: 280, pointerEvents: "none", zIndex: 10 }}
+        style={{ display: "none" }}
       >
         {/* Brand / Logo -> Dashboard */}
         <button

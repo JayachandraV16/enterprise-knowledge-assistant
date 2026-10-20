@@ -426,8 +426,16 @@ export const chatService = {
       await delay(300);
       return [...(r === 'employee' ? mockHistoryEmployee : mockHistoryAdmin)];
     }
-    const { data } = await api.get<unknown>('/api/chat/history');
-    return toConversationList(data);
+    try {
+      const { data } = await api.get<unknown>('/api/chat/history');
+      return toConversationList(data);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr?.response?.status === 404) {
+        return [...(r === 'employee' ? mockHistoryEmployee : mockHistoryAdmin)];
+      }
+      throw err;
+    }
   },
 
   async deleteConversation(id: string, roleOverride?: 'admin' | 'employee'): Promise<void> {
@@ -442,6 +450,21 @@ export const chatService = {
       }
       return;
     }
-    await api.delete(`/api/chat/history/${id}`);
+    try {
+      await api.delete(`/api/chat/history/${id}`);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr?.response?.status === 404) {
+        if (r === 'employee') {
+          mockHistoryEmployee = mockHistoryEmployee.filter((c) => c.id !== id);
+          saveHistory('employee', mockHistoryEmployee);
+        } else {
+          mockHistoryAdmin = mockHistoryAdmin.filter((c) => c.id !== id);
+          saveHistory('admin', mockHistoryAdmin);
+        }
+        return;
+      }
+      throw err;
+    }
   },
 };

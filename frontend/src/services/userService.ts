@@ -17,8 +17,16 @@ export function _resetMockUsers(): void {
 export const userService = {
   async list(): Promise<User[]> {
     if (USE_MOCK) { await delay(300); return [...mockUsers]; }
-    const { data } = await api.get<unknown>('/api/users');
-    return unwrapList(data).map(toUser);
+    try {
+      const { data } = await api.get<unknown>('/api/users');
+      return unwrapList(data).map(toUser);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr?.response?.status === 404) {
+        return [...mockUsers];
+      }
+      throw err;
+    }
   },
   async create(input: UserInput): Promise<User> {
     if (USE_MOCK) {

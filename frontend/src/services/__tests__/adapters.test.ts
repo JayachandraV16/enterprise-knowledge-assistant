@@ -134,6 +134,8 @@ describe('adapters', () => {
 
       const src3 = toSource({ fileName: 'Fin.csv', chunk: 'Expenses' });
       expect(src3).toEqual({ documentName: 'Fin.csv', page: undefined, snippet: 'Expenses' });
+      const src4 = toSource({ filename: 'Policy.pdf', page: 2, snippet: 'Security rule', score: 0.95 });
+      expect(src4).toEqual({ documentName: 'Policy.pdf', page: 2, snippet: 'Security rule' });
     });
   });
 

@@ -160,7 +160,7 @@ export function toDocument(raw: unknown): KnowledgeDocument {
  */
 export function toSource(raw: unknown): Source {
   const record = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const documentName = String(record.documentName ?? record.document ?? record.fileName ?? record.name ?? 'Document');
+  const documentName = String(record.documentName ?? record.document ?? record.fileName ?? record.filename ?? record.name ?? 'Document');
   const page = typeof record.page === 'number' ? record.page : (typeof record.pageNumber === 'number' ? record.pageNumber : undefined);
   const snippet = String(record.snippet ?? record.text ?? record.chunk ?? record.content ?? '');
 

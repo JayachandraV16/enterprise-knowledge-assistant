@@ -417,7 +417,52 @@ export const chatService = {
       return reply;
     }
     const { data } = await api.post<unknown>('/api/chat', { question, conversationId });
-    return toChatReply(data);
+    const reply = toChatReply(data);
+    const now = new Date().toISOString();
+    const userMsg = {
+      id: `u${Date.now()}`,
+      role: 'user' as const,
+      content: question,
+      timestamp: now,
+    };
+    const id = reply.conversationId || conversationId || `c${Date.now()}`;
+
+    if (r === 'employee') {
+      const existing = mockHistoryEmployee.find((c) => c.id === id);
+      if (existing) {
+        existing.messages.push(userMsg, reply.message);
+        existing.updatedAt = now;
+      } else {
+        mockHistoryEmployee = [
+          {
+            id,
+            title: question.slice(0, 60),
+            updatedAt: now,
+            messages: [userMsg, reply.message],
+          },
+          ...mockHistoryEmployee,
+        ];
+      }
+      saveHistory('employee', mockHistoryEmployee);
+    } else {
+      const existing = mockHistoryAdmin.find((c) => c.id === id);
+      if (existing) {
+        existing.messages.push(userMsg, reply.message);
+        existing.updatedAt = now;
+      } else {
+        mockHistoryAdmin = [
+          {
+            id,
+            title: question.slice(0, 60),
+            updatedAt: now,
+            messages: [userMsg, reply.message],
+          },
+          ...mockHistoryAdmin,
+        ];
+      }
+      saveHistory('admin', mockHistoryAdmin);
+    }
+    return reply;
   },
 
   async getHistory(roleOverride?: 'admin' | 'employee'): Promise<Conversation[]> {

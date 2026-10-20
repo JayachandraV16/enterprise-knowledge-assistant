@@ -140,8 +140,13 @@ export default function ChatWrapper({
 
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setUploadStatus("Please select a PDF file.");
+    const supportedExtensions = [".pdf", ".csv", ".docx", ".xlsx"];
+    const fileName = file.name.toLowerCase();
+
+    if (!supportedExtensions.some((ext) => fileName.endsWith(ext))) {
+     setUploadStatus(
+        "Unsupported file type. Please select a PDF, CSV, Word (.docx), or Excel (.xlsx) file."
+    );
       return;
     }
 
@@ -622,7 +627,7 @@ export default function ChatWrapper({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,application/pdf"
+              accept=".pdf,.csv,.docx,.xlsx,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={handleFileUpload}
               className="hidden"
             />
@@ -633,7 +638,7 @@ export default function ChatWrapper({
               disabled={uploading}
               className="shrink-0 rounded-lg border border-[#cbd5e1] px-3 py-2 text-sm text-[#475569] hover:border-[#4f46e5] disabled:opacity-50"
             >
-              {uploading ? "Uploading..." : "Attach PDF"}
+              {uploading ? "Uploading..." : "Attach Document"}
             </button>
             <textarea
               ref={textareaRef}
@@ -666,7 +671,7 @@ export default function ChatWrapper({
               }`}
             >
               {uploading
-                ? `Uploading PDF... ${uploadProgress}%`
+                ? `Uploading document... ${uploadProgress}%`
                 : uploadStatus}
             </p>
           )}

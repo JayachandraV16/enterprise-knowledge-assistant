@@ -9,6 +9,8 @@ export const INITIAL_MOCK_DOCS: KnowledgeDocument[] = [
 
 const STORAGE_KEY = 'mock_documents';
 
+let memoryDocs: KnowledgeDocument[] = JSON.parse(JSON.stringify(INITIAL_MOCK_DOCS));
+
 function loadDocs(): KnowledgeDocument[] {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -16,17 +18,28 @@ function loadDocs(): KnowledgeDocument[] {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          // Auto-resolve any stuck PROCESSING docs after 2 seconds
+          const now = Date.now();
+          return parsed.map((d) => {
+            if (d.status === 'PROCESSING') {
+              const uploadTime = new Date(d.uploadedAt).getTime();
+              if (isNaN(uploadTime) || now - uploadTime > 2000) {
+                return { ...d, status: 'PROCESSED', pageCount: d.pageCount || 10 };
+              }
+            }
+            return d;
+          });
         }
       }
     }
   } catch {
     // ignore
   }
-  return JSON.parse(JSON.stringify(INITIAL_MOCK_DOCS));
+  return memoryDocs;
 }
 
 function saveDocs(docs: KnowledgeDocument[]): void {
+  memoryDocs = docs;
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
@@ -39,6 +52,7 @@ function saveDocs(docs: KnowledgeDocument[]): void {
 let mockDocs: KnowledgeDocument[] = loadDocs();
 
 export function _resetMockDocs(): void {
+  memoryDocs = JSON.parse(JSON.stringify(INITIAL_MOCK_DOCS));
   mockDocs = JSON.parse(JSON.stringify(INITIAL_MOCK_DOCS));
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -53,6 +67,7 @@ export const documentService = {
   async list(): Promise<KnowledgeDocument[]> {
     if (USE_MOCK) {
       await delay(300);
+      mockDocs = loadDocs();
       return [...mockDocs];
     }
     const { data } = await api.get<unknown>('/api/documents');
@@ -64,7 +79,7 @@ export const documentService = {
     if (USE_MOCK) {
       for (let p = 0; p <= 100; p += 25) {
         onProgress?.(p);
-        await delay(150);
+        await delay(100);
       }
       const ext = (file.name.split('.').pop() ?? '').toUpperCase() as DocumentType;
       const doc: KnowledgeDocument = {
@@ -78,13 +93,15 @@ export const documentService = {
       mockDocs = [doc, ...mockDocs];
       saveDocs(mockDocs);
 
-      // Transition to PROCESSED after 3 seconds and persist
+      // Fast, reliable transition to PROCESSED (1.5 seconds)
       setTimeout(() => {
-        mockDocs = mockDocs.map((d) =>
-          d.id === doc.id ? { ...d, status: 'PROCESSED', pageCount: Math.max(1, Math.round(file.size / 50000)) } : d
+        mockDocs = loadDocs().map((d) =>
+          d.id === doc.id
+            ? { ...d, status: 'PROCESSED', pageCount: Math.max(1, Math.round(file.size / 50000) || 5) }
+            : d
         );
         saveDocs(mockDocs);
-      }, 3000);
+      }, 1500);
 
       return doc;
     }

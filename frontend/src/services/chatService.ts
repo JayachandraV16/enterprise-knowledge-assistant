@@ -237,6 +237,122 @@ export function _resetMockHistory(): void {
   }
 }
 
+function generateSmartReply(question: string): { content: string; sources: { documentName: string; page?: number; snippet: string }[] } {
+  const q = question.toLowerCase();
+
+  // Read currently uploaded documents from localStorage
+  let uploadedDocs: { fileName: string; fileType: string }[] = [];
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem('mock_documents');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) uploadedDocs = parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  const primaryDoc = uploadedDocs[0]?.fileName || 'Security_Policy.pdf';
+
+  // Check if user specifically asked about an uploaded file
+  const matchedDoc = uploadedDocs.find((d) => q.includes(d.fileName.toLowerCase()));
+  if (matchedDoc) {
+    if (matchedDoc.fileType === 'CSV') {
+      return {
+        content: `Based on the uploaded dataset **${matchedDoc.fileName}**, the records have been indexed and embedded into the enterprise vector store. You can query specific metrics, employee entries, or departmental columns.`,
+        sources: [
+          {
+            documentName: matchedDoc.fileName,
+            page: 1,
+            snippet: `Indexed CSV rows from ${matchedDoc.fileName}. Columns and values processed.`,
+          },
+        ],
+      };
+    }
+    return {
+      content: `Based on your indexed document **${matchedDoc.fileName}**, the contents have been processed into chunked vector embeddings. All policies and clauses within this document are accessible for question answering.`,
+      sources: [
+        {
+          documentName: matchedDoc.fileName,
+          page: 1,
+          snippet: `Reference text from ${matchedDoc.fileName}: General enterprise policy guidelines and requirements.`,
+        },
+      ],
+    };
+  }
+
+  // Topic: MFA / Security / Password / Login
+  if (/mfa|password|security|login|auth|credential/.test(q)) {
+    return {
+      content: 'Multi-factor authentication (MFA) is strictly required for all employees accessing internal enterprise systems. Authenticator apps (e.g., Google Authenticator, Microsoft Authenticator) must be used rather than SMS-based OTPs.',
+      sources: [
+        {
+          documentName: 'Security_Policy.pdf',
+          page: 12,
+          snippet: 'All employees must enable MFA for internal systems using approved authenticator apps.',
+        },
+      ],
+    };
+  }
+
+  // Topic: Leave / Holiday / Vacation / PTO
+  if (/leave|vacation|holiday|pto|annual|time off|sick/.test(q)) {
+    return {
+      content: 'Full-time employees are entitled to 25 days of paid annual leave per calendar year, accruing at 2.08 days per month. Leave must be approved by your line manager at least 2 weeks in advance via the HR portal.',
+      sources: [
+        {
+          documentName: 'HR_Handbook.docx',
+          page: 31,
+          snippet: 'Annual leave entitlement: 25 days per calendar year for full-time employees.',
+        },
+      ],
+    };
+  }
+
+  // Topic: Expense / Reimbursement / Travel / Receipts
+  if (/expense|reimburse|receipt|travel|claim|budget|payment/.test(q)) {
+    return {
+      content: 'Original itemized receipts are required for all expense claims exceeding £25. All expense claims must be submitted within 30 days of the transaction date with manager pre-approval.',
+      sources: [
+        {
+          documentName: 'HR_Handbook.docx',
+          page: 35,
+          snippet: 'Original itemized receipts are required for all claims above £25.',
+        },
+      ],
+    };
+  }
+
+  // Topic: What documents exist / Help / Overview
+  if (/document|file|upload|library|available|what do you know|help/.test(q)) {
+    const docList = uploadedDocs.map((d) => d.fileName).join(', ') || 'Security_Policy.pdf, HR_Handbook.docx';
+    return {
+      content: `The following documents are currently indexed in your knowledge base: ${docList}. You can ask any question regarding security protocols, HR procedures, financial rules, or any newly uploaded document.`,
+      sources: [
+        {
+          documentName: primaryDoc,
+          page: 1,
+          snippet: 'Enterprise knowledge index: document catalog and policy references.',
+        },
+      ],
+    };
+  }
+
+  // Generic / Default topic: grounded in primary uploaded document
+  return {
+    content: `Based on your enterprise documents (including **${primaryDoc}**), here is the relevant information regarding your query: All guidelines must adhere to verified organizational compliance standards. Operational procedures require approval from the respective department supervisor.`,
+    sources: [
+      {
+        documentName: primaryDoc,
+        page: 2,
+        snippet: `Relevant excerpt matching "${question.slice(0, 40)}" from ${primaryDoc}.`,
+      },
+    ],
+  };
+}
+
 export const chatService = {
   // SRS 3.3: question -> RAG -> answer + source references
   async ask(question: string, conversationId?: string, roleOverride?: 'admin' | 'employee'): Promise<ChatReply> {
@@ -245,20 +361,15 @@ export const chatService = {
       await delay(1200);
       const id = conversationId ?? `c${Date.now()}`;
       const now = new Date().toISOString();
+      const generated = generateSmartReply(question);
       const reply: ChatReply = {
         conversationId: id,
         message: {
           id: `m${Date.now()}`,
           role: 'assistant',
           timestamp: now,
-          content: 'Multi-factor authentication is required for all employees accessing internal systems.',
-          sources: [
-            {
-              documentName: 'Security_Policy.pdf',
-              page: 12,
-              snippet: 'All employees must enable MFA for internal systems.',
-            },
-          ],
+          content: generated.content,
+          sources: generated.sources,
         },
       };
       const userMsg = {

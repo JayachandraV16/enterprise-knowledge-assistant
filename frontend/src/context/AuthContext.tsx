@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { authService } from '../services/authService';
 import { TOKEN_KEY, USER_KEY } from '../services/api';
 import type { User } from '../types';
@@ -12,6 +20,9 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+// LOCAL DEMO ONLY: remove this override before deployment.
+const DEMO_MODE = true;
+
 function readStoredUser(): User | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
@@ -22,7 +33,19 @@ function readStoredUser(): User | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(readStoredUser);
+  const [user, setUser] = useState<User | null>(() => {
+    if (DEMO_MODE) {
+      // A demo identity only; no administrator privileges.
+      return {
+        id: 'demo-employee',
+        name: 'Demo Employee',
+        email: 'demo@enterprise.com',
+        role: 'EMPLOYEE',
+      } as User;
+    }
+
+    return readStoredUser();
+  });
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await authService.login(email, password);
@@ -35,10 +58,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
-    setUser(null);
+
+    if (DEMO_MODE) {
+      setUser({
+        id: 'demo-employee',
+        name: 'Demo Employee',
+        email: 'demo@enterprise.com',
+        role: 'EMPLOYEE',
+      } as User);
+    } else {
+      setUser(null);
+    }
   }, []);
 
-  const value = useMemo(() => ({ user, isAdmin: user?.role === 'ADMIN', login, logout }), [user, login, logout]);
+  const value = useMemo(
+    () => ({ user, isAdmin: user?.role === 'ADMIN', login, logout }),
+    [user, login, logout],
+  );
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
